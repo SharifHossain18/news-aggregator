@@ -141,6 +141,11 @@ for kw in ["gas", "lng", "petrobangla", "bapex", "bgfcl", "sgfl", "gtcl", "titas
            "maddhapara", "barapukuria"]:
     PRIMARY_PATTERNS.append(re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE))
 
+PRIORITY_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE) 
+                     for kw in ["explosion", "blast", "fire", "emergency", "sudden", "crisis", "cutoff", "shut down", "accident"]]
+PRIORITY_BENGALI = ["বিস্ফোরণ", "আগুন", "জরুরি", "সংকট", "বন্ধ", "দুর্ঘটনা", "আগুনে", "হতাহত"]
+
+
 PRIMARY_BENGALI = ["গ্যাস", "এলএনজি", "পেট্রোবাংলা", "কয়লা খনি", "পাথর খনি",
                     "তিতাস", "বাপেক্স", "মধ্যপাড়া", "বড়পুকুরিয়া", "জিটিসিএল",
                     "আরপিজিসিএল", "জালালাবাদ", "গ্যাসহীন", "গ্যাস সংকট"]
@@ -245,6 +250,8 @@ def track_source(name, success, count=0):
     else:
         stats["fail"] += 1
         stats["last_fail_streak"] = stats.get("last_fail_streak", 0) + 1
+        if stats["last_fail_streak"] == 3:
+            send_telegram_msg(f"⚠️ Source Monitoring Alert: I haven't been able to reach '{name}' for the last 3 attempts. It may need a layout update.")
     stats["last_check"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # --- STORAGE ---
@@ -379,6 +386,17 @@ def is_keyword_match(text):
             if kw in text_lower:
                 return True
     return False
+
+def is_priority_match(text):
+    text_lower = text.lower()
+    for pat in PRIORITY_PATTERNS:
+        if pat.search(text_lower):
+            return True
+    for kw in PRIORITY_BENGALI:
+        if kw in text_lower:
+            return True
+    return False
+
 
 def is_excluded(text):
     text_lower = text.lower()
@@ -774,77 +792,95 @@ def scrape_all():
     log("News Aggregator Started")
     log("=" * 50)
     load_stats()
-    start_time, end_time = get_target_timeframe()
+    
+    bd_tz = datetime.timezone(datetime.timedelta(hours=6))
+    now_bd = datetime.datetime.now(bd_tz)
+    # Daily Digest time is 7:00 AM to 7:59 AM
+    is_digest_time = (now_bd.hour == 7)
+    
+    search_query = os.environ.get("SEARCH_QUERY")
+    if search_query:
+        log(f"Running in SEARCH MODE for: {search_query}")
+        start_time = now_bd - datetime.timedelta(days=7)
+    else:
+        # If it's 7 AM, we scan the full 24 hours for the digest.
+        # Otherwise, we scan a shorter window (2.5 hours) to catch new articles for alerts.
+        if is_digest_time:
+            start_time = now_bd - datetime.timedelta(hours=24)
+        else:
+            start_time = now_bd - datetime.timedelta(hours=2.5)
+        
     sent_articles = load_sent_articles()
     all_new = []
-
+    priority_news = []
+    
     log(f"Scanning {len(SOURCES)} sources (parallel)...")
     with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = {executor.submit(scrape_source, src, start_time, end_time): src for src in SOURCES}
+        futures = {executor.submit(scrape_source, src, start_time, now_bd): src for src in SOURCES}
         for future in as_completed(futures):
             source = futures[future]
             try:
                 articles = future.result()
                 for art in articles:
                     if art['link'] not in sent_articles:
-                        all_new.append(art)
-                        sent_articles.add(art['link'])
+                        if search_query:
+                            if search_query.lower() in art['title'].lower():
+                                all_new.append(art)
+                        else:
+                            all_new.append(art)
+                            if is_priority_match(art['title']):
+                                priority_news.append(art)
             except Exception as e:
-                log(f"  Unexpected error: {e}")
+                log(f"  Error processing {source['name']}: {e}")
 
     save_stats()
 
-    if not all_new:
-        log("No new articles found.")
+    if search_query:
+        if all_new:
+            msg = f"🔍 <b>Search Results: '{search_query}'</b>\n" + "-"*30 + "\n\n"
+            for i, art in enumerate(all_new[:15], 1):
+                msg += f"{i}. <a href='{html.escape(art['link'])}'>{html.escape(art['title'])}</a>\n\n"
+            send_telegram_retry(msg)
+        else:
+            send_telegram_retry(f"🔍 Search for '{search_query}' yielded no new results.")
         return
 
-    log(f"Found {len(all_new)} new articles to send.")
-    save_sent_articles(sent_articles)
+    # 1. Handle Breaking News Alerts (Instant)
+    if priority_news:
+        msg = "🚨 <b>BREAKING NEWS ALERT</b> 🚨\n" + "="*30 + "\n\n"
+        for art in priority_news:
+            msg += f"🔥 <b>{html.escape(art['title'])}</b>\n📌 {art['source']}\n🔗 <a href='{html.escape(art['link'])}'>Read Article</a>\n\n"
+            sent_articles.add(art['link'])
+        send_telegram_retry(msg)
+        save_sent_articles(sent_articles)
 
-    source_counts = {}
-    for art in all_new:
-        source_counts[art['source']] = source_counts.get(art['source'], 0) + 1
-    source_summary = " | ".join([f"{k}: {v}" for k, v in sorted(source_counts.items(), key=lambda x: -x[1])])
-    log(f"Breakdown: {source_summary}")
-
-    now_str = datetime.datetime.now().strftime("%H:%M")
-    header = f"📰 <b>News Update — {now_str}</b>\n🔍 {len(all_new)} new article(s) found\n\n📊 <i>{source_summary}</i>"
-    if send_telegram_retry(header):
-        log("Header sent to Telegram")
-    else:
-        log("ERROR: Failed to send header")
-    time.sleep(0.5)
-
-    all_new.sort(key=lambda x: (x['source'], x['title']))
-
-    chunks = []
-    current_chunk = []
-    current_len = 0
-    for i, art in enumerate(all_new, 1):
-        item = f"{i}. <a href='{html.escape(art['link'])}'>{html.escape(art['title'])}</a>\n   📌 {art['source']}\n\n"
-        item_len = len(item)
-        if current_len + item_len > 4000 and current_chunk:
-            chunks.append("".join(current_chunk))
-            current_chunk = []
-            current_len = 0
-        current_chunk.append(item)
-        current_len += item_len
-    if current_chunk:
-        chunks.append("".join(current_chunk))
-
-    ok_count = sum(1 for s in SOURCE_STATS.values() if s.get("success", 0) > 0)
-    fail_count = len(SOURCES) - ok_count
-
-    for j, chunk in enumerate(chunks):
-        if send_telegram_retry(chunk):
-            log(f"Chunk {j+1}/{len(chunks)} sent to Telegram")
+    # 2. Handle Daily Digest (7 AM)
+    if is_digest_time:
+        if all_new:
+            header = f"☀️ <b>Daily News Digest — {now_bd.strftime('%d %b %Y')}</b>\n"
+            header += f"Found {len(all_new)} relevant articles.\n" + "="*30 + "\n\n"
+            
+            # Sort: Priority first
+            all_new.sort(key=lambda x: is_priority_match(x['title']), reverse=True)
+            
+            body = ""
+            for i, art in enumerate(all_new, 1):
+                prefix = "🔴 " if is_priority_match(art['title']) else f"{i}. "
+                item = f"{prefix}<a href='{html.escape(art['link'])}'>{html.escape(art['title'])}</a>\n📌 {art['source']}\n\n"
+                if len(header + body + item) > 4000:
+                    send_telegram_retry(header + body)
+                    header = ""
+                    body = ""
+                body += item
+                sent_articles.add(art['link'])
+            
+            send_telegram_retry(header + body)
+            save_sent_articles(sent_articles)
         else:
-            log(f"ERROR: Chunk {j+1}/{len(chunks)} FAILED")
-        if j < len(chunks) - 1:
-            time.sleep(0.5)
+            send_telegram_retry("☀️ Good Morning! No new energy news found in the last 24 hours.")
+    
+    log(f"Scrape completed. Found {len(all_new)} new articles.")
 
-    log(f"Done! {ok_count} sources OK, {fail_count} had errors.")
-    log("=" * 50)
 
 # --- ADMIN COMMANDS ---
 def handle_command(cmd):
