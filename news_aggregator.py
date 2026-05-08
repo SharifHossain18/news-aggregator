@@ -1,5 +1,6 @@
 import urllib.request
 import urllib.parse
+import urllib.error
 import xml.etree.ElementTree as ET
 import json
 import datetime
@@ -28,14 +29,41 @@ except ImportError:
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
-if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+SELF_CHECK_MODE = os.environ.get("SELF_CHECK", "").strip().lower() in ("1", "true", "yes", "on")
+EXTRA_ARTICLE_URLS = [u.strip() for u in os.environ.get("EXTRA_ARTICLE_URLS", "").split(",") if u.strip()]
+STRICT_CORE_ONLY = os.environ.get("STRICT_CORE_ONLY", "false").strip().lower() in ("1", "true", "yes", "on")
+DIGEST_HOUR_BD = int(os.environ.get("DIGEST_HOUR_BD", "7"))
+DIGEST_CATCHUP_HOURS = int(os.environ.get("DIGEST_CATCHUP_HOURS", "5"))
+if (not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID) and not SELF_CHECK_MODE:
     print("ERROR: Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env file")
     print("Create .env with:\nTELEGRAM_BOT_TOKEN=your_token\nTELEGRAM_CHAT_ID=your_chat_id")
     sys.exit(1)
 
+# --- GEMINI AI SETUP ---
+try:
+    import google.generativeai as genai
+    HAS_GENAI = True
+except ImportError:
+    HAS_GENAI = False
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+AI_FILTER_ENABLED = os.environ.get("AI_FILTER_ENABLED", "true").strip().lower() in ("1", "true", "yes", "on")
+AI_SUMMARIZE_ENABLED = os.environ.get("AI_SUMMARIZE_ENABLED", "true").strip().lower() in ("1", "true", "yes", "on")
+
+if HAS_GENAI and GEMINI_API_KEY:
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        # Use flash for speed and cost efficiency
+        gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+    except Exception as e:
+        print(f"WARNING: Gemini AI initialization failed: {e}")
+        HAS_GENAI = False
+
 # --- FILES ---
 SENT_LOG_FILE = "sent_articles.json"
 STATS_FILE = "source_stats.json"
+DIGEST_STATE_FILE = "digest_state.json"
+BAD_SECTION_FILE = "bad_sections.json"
 
 # --- LOGGING WITH ROTATION ---
 logger = logging.getLogger("news_aggregator")
@@ -49,7 +77,6 @@ logger.addHandler(console_handler)
 
 def log(msg):
     logger.info(msg)
-    print(msg)
 
 # --- SOURCES ---
 SOURCES = [
@@ -94,11 +121,21 @@ SOURCES = [
         "urls": [
             "https://www.kalerkantho.com/", 
             "https://www.kalerkantho.com/online/business", 
-            "https://www.kalerkantho.com/online/national"
+            "https://www.kalerkantho.com/online/national",
+            "https://www.kalerkantho.com/print-edition/last-page"
         ], 
         "type": "html"
     },
-    {"name": "Samakal", "url": "https://samakal.com/", "type": "html"},
+    {
+        "name": "Samakal",
+        "urls": [
+            "https://samakal.com/",
+            "https://samakal.com/bangladesh",
+            "https://samakal.com/economics",
+            "https://samakal.com/search?search=gas"
+        ],
+        "type": "html"
+    },
     {"name": "Desh Rupantor", "url": "https://www.deshrupantor.com/", "type": "html"},
     {"name": "Jugantor", "url": "https://www.jugantor.com/", "type": "html"},
     {"name": "Shomoyer Alo", "url": "https://www.shomoyeralo.com/", "type": "html"},
@@ -124,21 +161,100 @@ SOURCES = [
     {"name": "Manobkantha", "url": "https://manobkantha.com.bd/", "type": "html"},
     {"name": "Daily Inqilab", "url": "https://dailyinqilab.com/", "type": "html"},
     {"name": "Manab Zamin", "url": "https://www.mzamin.com/", "type": "html"},
-    {"name": "BD Pratidin", "url": "https://www.bd-pratidin.com/", "type": "html"},
+    {
+        "name": "BD Pratidin",
+        "urls": [
+            "https://www.bd-pratidin.com/",
+            "https://www.bd-pratidin.com/last-page",
+            "https://www.bd-pratidin.com/national"
+        ],
+        "type": "html"
+    },
     {"name": "Bangladesh Today", "url": "https://thebangladeshtoday.com/", "type": "html"},
     {"name": "New Nation", "url": "https://dailynewnation.com/", "type": "html"},
     {"name": "New Age", "url": "https://www.newagebd.net/", "type": "html"},
     {"name": "Observer", "url": "https://observerbd.com/", "type": "html"},
     {"name": "Daily Post", "url": "https://bangladeshpost.net/", "type": "html"},
-    {"name": "Daily Sun", "url": "https://www.daily-sun.com/", "type": "html"},
-    {"name": "Financial Express", "url": "https://thefinancialexpress.com.bd/", "type": "html"}
+    {
+        "name": "Daily Sun",
+        "urls": [
+            "https://www.daily-sun.com/",
+            "https://www.daily-sun.com/business",
+            "https://www.daily-sun.com/business/latest"
+        ],
+        "type": "html"
+    },
+    {
+        "name": "Daily Sun News Sitemap",
+        "url": "https://www.daily-sun.com/news_sitemap.xml",
+        "type": "sitemap"
+    },
+    {
+        "name": "Financial Express (Sitemap)", 
+        "url": "https://thefinancialexpress.com.bd/sitemap.xml", 
+        "type": "html"
+    },
+    {
+        "name": "Financial Express Today",
+        "urls": [
+            "https://thefinancialexpress.com.bd/",
+            "https://thefinancialexpress.com.bd/trade",
+            "https://thefinancialexpress.com.bd/economy"
+        ],
+        "type": "html"
+    },
+    {
+        "name": "Financial Express Search",
+        "urls": [
+            "https://thefinancialexpress.com.bd/search?search=gas",
+            "https://thefinancialexpress.com.bd/search?search=petrobangla"
+        ],
+        "type": "html"
+    }
+]
+
+# Extra section pages to scan per domain so important articles do not get missed
+# when publishers post to category/last-page routes instead of homepage.
+DOMAIN_SECTION_HINTS = {
+    "bd-pratidin.com": ["/last-page", "/national", "/news"],
+    "kalerkantho.com": ["/online/national", "/online/business", "/print-edition/last-page"],
+    "prothomalo.com": ["/bangladesh", "/business", "/topic/energy"],
+    "thedailystar.net": ["/news/bangladesh", "/business", "/tags/energy"],
+    "dhakatribune.com": ["/bangladesh", "/business", "/climate"],
+    "tbsnews.net": ["/bangladesh", "/economy", "/topics/energy"],
+    "daily-sun.com": ["/business", "/business/latest", "/news"],
+    "thefinancialexpress.com.bd": ["/trade", "/economy", "/energy"],
+    "today.thefinancialexpress.com.bd": ["/first-page", "/trade-market", "/search?search=gas"],
+    "samakal.com": ["/bangladesh", "/economics", "/search?search=gas"],
+}
+
+COMMON_SECTION_HINTS = [
+    "/bangladesh",
+    "/national",
+    "/business",
+    "/economy",
+    "/energy",
+    "/latest",
+    "/last-page",
+    "/online",
+    "/online/national",
+    "/online/business",
+    "/search?search=gas",
+    "/search?search=petrobangla",
+]
+
+BAD_SECTION_PATHS = {}
+
+# Only page-level exclusions requested by user.
+BLOCKED_SECTION_KEYWORDS = [
+    "/international", "/world", "/sports", "/sport", "/culture", "/entertainment"
 ]
 
 # --- PRE-COMPILED KEYWORD PATTERNS ---
 PRIMARY_PATTERNS = []
 for kw in ["gas", "lng", "petrobangla", "bapex", "bgfcl", "sgfl", "gtcl", "titas", "bakhrabad",
            "jalalabad", "pashchimanchal", "rpgcl", "bcmcl", "mgmcl",
-           "maddhapara", "barapukuria"]:
+           "maddhapara", "barapukuria", "coal", "rock", "mining", "extraction", "drilling", "energy", "brahmanbaria"]:
     PRIMARY_PATTERNS.append(re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE))
 
 PRIORITY_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE) 
@@ -148,7 +264,7 @@ PRIORITY_BENGALI = ["বিস্ফোরণ", "আগুন", "জরুরি
 
 PRIMARY_BENGALI = ["গ্যাস", "এলএনজি", "পেট্রোবাংলা", "কয়লা খনি", "পাথর খনি",
                     "তিতাস", "বাপেক্স", "মধ্যপাড়া", "বড়পুকুরিয়া", "জিটিসিএল",
-                    "আরপিজিসিএল", "জালালাবাদ", "গ্যাসহীন", "গ্যাস সংকট"]
+                    "আরপিজিসিএল", "জালালাবাদ", "গ্যাসহীন", "গ্যাস সংকট", "কয়লা", "পাথর", "খনি", "উত্তোলন"]
 
 SECONDARY_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
                        for kw in ["coal", "rock", "karnaphuli", "sundarban"]]
@@ -159,7 +275,7 @@ ASSOC_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
 ASSOC_BENGALI = ["বড়পুকুরিয়া", "মধ্যপাড়া", "পেট্রোবাংলা"]
 
 EXCLUDE_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
-                       for kw in ["lpg", "cylinder", "russia", "ukraine", "israel", "gaza",
+                        for kw in ["lpg", "cylinder", "russia", "ukraine", "israel", "gaza",
                                   "palestine", "usa", "europe", "india", "pakistan", "china",
                                   "biden", "putin", "hormuz", "global", "world",
                                   "international", "thermal power plant",
@@ -195,7 +311,9 @@ EXCLUDE_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
                                   "portugal", "netherlands", "switzerland", "austria",
                                   "poland", "czech", "hungary", "romania", "bulgaria",
                                   "serbia", "croatia", "algeria", "morocco", "tunisia",
-                                  "turkmenistan", "kazakhstan", "uzbekistan", "azerbaijan"]]
+                                  "turkmenistan", "kazakhstan", "uzbekistan", "azerbaijan",
+                                  "brick kiln", "brickfield", "crop damage", "paddy field",
+                                  "stone quarry", "sand lifting", "illegal sand"]]
 EXCLUDE_BENGALI = ["এলপিজি", "সিলিন্ডার", "পুতিন", "বাইডেন", "ইউক্রেন", "রাশিয়া",
                      "ভারত", "ইসরায়েল", "আশা ভোঁসলে", "সঙ্গীত", "চলচ্চিত্র",
                      "রিসেট বাটন", "হরমুজ", "পারস্য উপসাগর", "বিশ্ব",
@@ -213,7 +331,46 @@ EXCLUDE_BENGALI = ["এলপিজি", "সিলিন্ডার", "পু�
                      "দ্বিপাক্ষিক", "বহুপাক্ষিক", "পররাষ্ট্র নীতি",
                      "ফিফা", "বিশ্বকাপ", "অলিম্পিক", "টেনিস", "গলফ",
                      "শেয়ার বাজার", "ওয়াল স্ট্রিট", "মুদ্রাস্ফীতি",
-                     "কোভিড", "মহামারি", "টিকা", "হু"]
+                     "কোভিড", "মহামারি", "টিকা", "হু",
+                     "ইটভাটা", "ইট ভাটা", "ধান", "ধানক্ষেত", "কৃষিজমি",
+                     "পাথর কোয়ারি", "বালু", "অবৈধ বালু", "মাটি উত্তোলন"]
+
+# Always exclude these topics even if they match core keywords.
+HARD_EXCLUDE_PATTERNS = [
+    re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
+    for kw in [
+        "stone quarry", "quarry", "rock quarry", "pathor koari", "pathor quarry",
+        "nuclear power plant", "nuclear plant", "nuclear energy", "nuclear reactor",
+        "rooppur nuclear", "rupur nuclear", "atomic energy"
+    ]
+]
+HARD_EXCLUDE_BENGALI = [
+    "পাথর কোয়ারি", "পাথরকোয়ারি", "পাথর খাদান", "কোয়ারি",
+    "পারমাণবিক বিদ্যুৎ", "পারমাণবিক বিদ্যুৎকেন্দ্র", "পারমাণবিক কেন্দ্র",
+    "পারমাণবিক শক্তি", "রূপপুর পারমাণবিক", "রূপপুর বিদ্যুৎকেন্দ্র", "আণবিক শক্তি কমিশন"
+]
+
+GENERIC_TITLE_PATTERNS = [
+    re.compile(r'^\s*(news|sports|last page|first page|home|video|photos?)\s*$', re.IGNORECASE),
+    re.compile(r'^\s*\d{5,}\s*$'),
+]
+
+GENERIC_TITLE_BENGALI = [
+    "প্রথম পাতা", "শেষের পাতা", "শেষ পাতা", "খেলা", "বিনোদন", "দেশে দেশে", "জাতীয়"
+]
+
+TRANSPORT_PATTERNS = [
+    re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
+    for kw in [
+        "launch fare", "bus fare", "transport fare", "metro fare", "rickshaw fare",
+        "vehicle fare", "ticket fare", "kilometre fare", "per kilometre", "fare hike",
+        "fare increased", "fare increase"
+    ]
+]
+TRANSPORT_BENGALI = [
+    "লঞ্চ ভাড়া", "বাস ভাড়া", "ভাড়া বৃদ্ধি", "ভাড়া বৃদ্ধি", "পরিবহন ভাড়া",
+    "প্রতি কিলোমিটার", "কিলোমিটার প্রতি", "টিকিট ভাড়া", "নৌভাড়া"
+]
 
 # --- HTML PARSER (replaces regex) ---
 try:
@@ -239,6 +396,75 @@ def save_stats():
     with open(STATS_FILE, "w", encoding="utf-8") as f:
         json.dump(SOURCE_STATS, f, ensure_ascii=False, indent=2)
 
+def load_digest_state():
+    if os.path.exists(DIGEST_STATE_FILE):
+        try:
+            with open(DIGEST_STATE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_digest_state(state):
+    with open(DIGEST_STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def load_bad_sections():
+    global BAD_SECTION_PATHS
+    if os.path.exists(BAD_SECTION_FILE):
+        try:
+            with open(BAD_SECTION_FILE, "r", encoding="utf-8") as f:
+                BAD_SECTION_PATHS = json.load(f)
+        except Exception:
+            BAD_SECTION_PATHS = {}
+    else:
+        BAD_SECTION_PATHS = {}
+
+
+def save_bad_sections():
+    with open(BAD_SECTION_FILE, "w", encoding="utf-8") as f:
+        json.dump(BAD_SECTION_PATHS, f, ensure_ascii=False, indent=2)
+
+
+def _host_key(url):
+    p = urllib.parse.urlparse(url)
+    host = p.netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
+def _path_query_key(url):
+    p = urllib.parse.urlparse(url)
+    key = p.path or "/"
+    if p.query:
+        key += "?" + p.query
+    return key
+
+
+def _is_common_hint_url(url):
+    p = urllib.parse.urlparse(url)
+    key = _path_query_key(url)
+    return key in COMMON_SECTION_HINTS and p.path not in ("", "/")
+
+
+def mark_bad_section_url(url):
+    if not _is_common_hint_url(url):
+        return
+    host = _host_key(url)
+    path_key = _path_query_key(url)
+    if host not in BAD_SECTION_PATHS:
+        BAD_SECTION_PATHS[host] = []
+    if path_key not in BAD_SECTION_PATHS[host]:
+        BAD_SECTION_PATHS[host].append(path_key)
+
+
+def is_known_bad_section_url(url):
+    host = _host_key(url)
+    path_key = _path_query_key(url)
+    return path_key in BAD_SECTION_PATHS.get(host, [])
+
 def track_source(name, success, count=0):
     if name not in SOURCE_STATS:
         SOURCE_STATS[name] = {"success": 0, "fail": 0, "articles": 0, "last_check": ""}
@@ -251,7 +477,7 @@ def track_source(name, success, count=0):
         stats["fail"] += 1
         stats["last_fail_streak"] = stats.get("last_fail_streak", 0) + 1
         if stats["last_fail_streak"] == 3:
-            send_telegram_msg(f"⚠️ Source Monitoring Alert: I haven't been able to reach '{name}' for the last 3 attempts. It may need a layout update.")
+            send_telegram_retry(f"⚠️ Source Monitoring Alert: I haven't been able to reach '{name}' for the last 3 attempts. It may need a layout update.")
     stats["last_check"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # --- STORAGE ---
@@ -271,6 +497,9 @@ def save_sent_articles(sent_set):
 
 # --- TELEGRAM ---
 def send_telegram(text, parse_mode="HTML"):
+    if SELF_CHECK_MODE:
+        log("[SELF_CHECK] Telegram send skipped")
+        return True
     text = "".join(ch for ch in text if ch.isprintable() or ch in "\n\r\t")
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {"chat_id": TELEGRAM_CHAT_ID, "text": text, "disable_web_page_preview": True}
@@ -278,15 +507,40 @@ def send_telegram(text, parse_mode="HTML"):
         data["parse_mode"] = parse_mode
     payload = json.dumps(data, ensure_ascii=False).encode('utf-8')
     req = urllib.request.Request(url, payload, headers={'Content-Type': 'application/json'})
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    secure_ctx = ssl.create_default_context()
+    insecure_ctx = ssl._create_unverified_context()
     try:
-        resp = urllib.request.urlopen(req, timeout=15, context=ctx)
+        resp = urllib.request.urlopen(req, timeout=15, context=secure_ctx)
         result = json.loads(resp.read())
         if not result.get("ok"):
             log(f"Telegram error: {result.get('description', 'unknown')}")
         return result.get("ok", False)
+    except ssl.SSLError as e:
+        log(f"Telegram SSL error, retrying insecurely: {e}")
+        try:
+            resp = urllib.request.urlopen(req, timeout=15, context=insecure_ctx)
+            result = json.loads(resp.read())
+            if not result.get("ok"):
+                log(f"Telegram error: {result.get('description', 'unknown')}")
+            return result.get("ok", False)
+        except Exception as inner:
+            log(f"Telegram send failed after SSL fallback: {inner}")
+            return False
+    except urllib.error.URLError as e:
+        msg = str(e)
+        if "CERTIFICATE_VERIFY_FAILED" in msg or "self-signed certificate" in msg:
+            log(f"Telegram cert verify failed, retrying insecurely: {e}")
+            try:
+                resp = urllib.request.urlopen(req, timeout=15, context=insecure_ctx)
+                result = json.loads(resp.read())
+                if not result.get("ok"):
+                    log(f"Telegram error: {result.get('description', 'unknown')}")
+                return result.get("ok", False)
+            except Exception as inner:
+                log(f"Telegram send failed after cert fallback: {inner}")
+                return False
+        log(f"Telegram send failed: {e}")
+        return False
     except Exception as e:
         log(f"Telegram send failed: {e}")
         return False
@@ -297,6 +551,39 @@ def send_telegram_retry(text, retries=3):
             return True
         time.sleep(2)
     return False
+
+def chunk_telegram_message(text, max_len=3800):
+    if len(text) <= max_len:
+        return [text]
+    chunks = []
+    remaining = text
+    while remaining:
+        if len(remaining) <= max_len:
+            chunks.append(remaining)
+            break
+        split_at = remaining.rfind("\n", 0, max_len)
+        if split_at < 200:
+            split_at = max_len
+        chunks.append(remaining[:split_at])
+        remaining = remaining[split_at:].lstrip("\n")
+    return chunks
+
+def send_telegram_chunked(text, parse_mode="HTML", retries=3):
+    chunks = chunk_telegram_message(text)
+    for idx, chunk in enumerate(chunks, 1):
+        ok = False
+        for _ in range(retries):
+            if send_telegram(chunk, parse_mode=parse_mode):
+                ok = True
+                break
+            time.sleep(2)
+        if not ok:
+            log(f"Failed to send Telegram chunk {idx}/{len(chunks)}")
+            return False
+        if len(chunks) > 1:
+            log(f"Telegram chunk {idx}/{len(chunks)} sent")
+            time.sleep(0.4)
+    return True
 
 # --- FETCH ---
 USER_AGENTS = [
@@ -315,6 +602,22 @@ try:
             'desktop': True
         }
     )
+    # Add persistent human headers
+    scraper.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Referer': 'https://www.google.com/',
+        'Sec-Ch-Ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'cross-site',
+        'Upgrade-Insecure-Requests': '1'
+    })
 except ImportError:
     scraper = None
     log("WARNING: cloudscraper not installed. Some sites may return 403. Run: pip install cloudscraper")
@@ -332,26 +635,49 @@ def fetch_url(url, retries=3):
                 if response.status_code == 200:
                     return response.content
                 else:
-                    log(f"HTTP {response.status_code} for {url}")
-                    return None
-            else:
-                # Fallback to urllib if cloudscraper isn't installed
-                headers = {
-                    "User-Agent": USER_AGENTS[i % len(USER_AGENTS)],
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.9,bn;q=0.8",
-                    "Upgrade-Insecure-Requests": "1"
-                }
-                req = urllib.request.Request(encoded_url, headers=headers)
-                ctx = ssl.create_default_context()
-                ctx.check_hostname = False
-                ctx.verify_mode = ssl.CERT_NONE
-                with urllib.request.urlopen(req, timeout=15, context=ctx) as response:
+                    log(f"HTTP {response.status_code} for {url} (cloudscraper)")
+                    if response.status_code == 404:
+                        mark_bad_section_url(url)
+
+            # urllib fallback (runs when cloudscraper unavailable or non-200)
+            headers = {
+                "User-Agent": USER_AGENTS[i % len(USER_AGENTS)],
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9,bn;q=0.8",
+                "Upgrade-Insecure-Requests": "1",
+                "Referer": "https://www.google.com/",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache"
+            }
+            req = urllib.request.Request(encoded_url, headers=headers)
+            secure_ctx = ssl.create_default_context()
+            with urllib.request.urlopen(req, timeout=15, context=secure_ctx) as response:
+                return response.read()
+        except ssl.SSLError as e:
+            try:
+                insecure_ctx = ssl._create_unverified_context()
+                with urllib.request.urlopen(req, timeout=15, context=insecure_ctx) as response:
+                    log(f"SSL fallback used for {url}: {e}")
                     return response.read()
+            except Exception as inner:
+                if i == retries:
+                    log(f"SSL fetch error for {url}: {inner}")
+                else:
+                    time.sleep(1)
         except Exception as e:
             if hasattr(e, 'code') and e.code == 403:
-                log(f"HTTP 403 for {url}")
-                return None
+                if i == retries:
+                    log(f"HTTP 403 for {url}")
+                else:
+                    time.sleep(1.2)
+                continue
+            if hasattr(e, 'code') and e.code == 404:
+                mark_bad_section_url(url)
+                if i == retries:
+                    log(f"HTTP 404 for {url}")
+                else:
+                    time.sleep(0.6)
+                continue
             if i == retries:
                 log(f"Fetch error for {url}: {e}")
             else:
@@ -361,6 +687,19 @@ def fetch_url(url, retries=3):
 # --- KEYWORD MATCHING ---
 def is_keyword_match(text):
     text_lower = text.lower()
+
+    # Strict bypass for core gas/pipeline/Petrobangla terms.
+    strict_terms = [
+        "petrobangla", "pipeline gas", "gas pipeline", "gas transmission",
+        "gas distribution", "lng", "well drilling", "gas well", "titas gas",
+        "jalalabad gas", "bakhrabad gas", "gtcl", "bgfcl", "sgfl", "bapex",
+        "পেট্রোবাংলা", "পাইপলাইন গ্যাস", "গ্যাস পাইপলাইন", "গ্যাস সঞ্চালন",
+        "গ্যাস বিতরণ", "এলএনজি", "গ্যাস কূপ", "কূপ খনন", "তিতাস গ্যাস",
+        "জালালাবাদ গ্যাস", "বাখরাবাদ গ্যাস", "বাপেক্স"
+    ]
+    if any(t in text_lower for t in strict_terms):
+        return True
+
     for pat in PRIMARY_PATTERNS:
         if pat.search(text_lower):
             return True
@@ -396,6 +735,22 @@ def is_priority_match(text):
         if kw in text_lower:
             return True
     return False
+
+
+def is_core_target_match(text):
+    text_lower = text.lower()
+    core_terms = [
+        "petrobangla", "pipeline gas", "gas pipeline", "gas transmission",
+        "gas distribution", "lng", "well drilling", "gas well", "titas gas",
+        "jalalabad gas", "bakhrabad gas", "gtcl", "bgfcl", "sgfl", "bapex",
+        "piped gas", "distribution company", "mmcf", "gasfield", "gas field",
+        "barapukuria", "maddhapara", "bcmcl", "mgmcl", "coal mine", "rock mine",
+        "পেট্রোবাংলা", "পাইপলাইন গ্যাস", "গ্যাস পাইপলাইন", "গ্যাস সঞ্চালন",
+        "গ্যাস বিতরণ", "এলএনজি", "গ্যাস কূপ", "কূপ খনন", "তিতাস গ্যাস",
+        "জালালাবাদ গ্যাস", "বাখরাবাদ গ্যাস", "বাপেক্স", "গ্যাসক্ষেত্র", "গ্যাস ফিল্ড",
+        "বড়পুকুরিয়া", "মধ্যপাড়া", "কয়লা খনি", "পাথর খনি"
+    ]
+    return any(term in text_lower for term in core_terms)
 
 
 def is_excluded(text):
@@ -438,6 +793,39 @@ def is_excluded(text):
 
     return False
 
+
+def should_exclude_text(text):
+    """Exclude generic/global topics, but keep clearly core target news."""
+    text_lower = text.lower()
+    for pat in HARD_EXCLUDE_PATTERNS:
+        if pat.search(text_lower):
+            return True
+    for kw in HARD_EXCLUDE_BENGALI:
+        if kw in text_lower:
+            return True
+
+    # Exclude transport fare stories unless they contain strong core targets.
+    is_transport_fare = any(p.search(text_lower) for p in TRANSPORT_PATTERNS) or any(k in text_lower for k in TRANSPORT_BENGALI)
+    if is_transport_fare and not is_core_target_match(text):
+        return True
+
+    if is_core_target_match(text):
+        return False
+    return is_excluded(text)
+
+
+def is_generic_title(text):
+    t = (text or "").strip().lower()
+    if not t:
+        return True
+    for p in GENERIC_TITLE_PATTERNS:
+        if p.search(t):
+            return True
+    for kw in GENERIC_TITLE_BENGALI:
+        if kw in t and len(t) <= 20:
+            return True
+    return False
+
 # --- PARSING ---
 def parse_rss(data, source_name, start_time, end_time):
     articles = []
@@ -462,7 +850,7 @@ def parse_rss(data, source_name, start_time, end_time):
                 continue
             title = title_node.text or ""
             link = (link_node.text or link_node.get('href') or "") if link_node is not None else ""
-            if not is_keyword_match(title) or is_excluded(title):
+            if not is_keyword_match(title) or should_exclude_text(title):
                 continue
             is_in_timeframe = True
             if date_node is not None and date_node.text:
@@ -487,11 +875,78 @@ def parse_html(data, source_name, base_url):
     try:
         if HAS_BS4:
             soup = BeautifulSoup(data, 'html.parser')
+
+            # Source-specific extraction: Daily Sun uses overlay anchors with headline in sibling heading tags.
+            if 'daily-sun.com' in base_url:
+                for a in soup.find_all('a', href=True):
+                    cls = ' '.join(a.get('class', []))
+                    href = a.get('href', '').strip()
+                    if 'linkOverlay' not in cls or not href:
+                        continue
+                    full_link = urllib.parse.urljoin(base_url, href) if not href.startswith('http') else href
+                    if full_link in seen_links:
+                        continue
+                    box = a.find_parent('div', class_=re.compile(r'positionRelative|baseHover|desktopSectionLead', re.IGNORECASE)) or a.parent
+                    title_node = box.find(['h1', 'h2', 'h3', 'h4', 'strong']) if box else None
+                    title_text = title_node.get_text(separator=' ', strip=True) if title_node else ''
+                    if len(title_text) < 15:
+                        continue
+                    if not is_keyword_match(title_text) or should_exclude_text(title_text):
+                        continue
+                    skip_url_zones = ['/tag/', '/category/', '/archive/', '/search/', '/author/',
+                                      '/login', '/register', '/about', '/contact', '/privacy',
+                                      '/terms', '/sitemap', '/feed', '/rss', '/atom',
+                                      '/wp-admin', '/wp-content', '/wp-includes', '/cdn-cgi',
+                                      'petrobangla.org', 'facebook.com', 'twitter.com', 'youtube.com',
+                                      'instagram.com', 'wa.me', 't.me']
+                    if any(z in full_link.lower() for z in skip_url_zones):
+                        continue
+                    seen_links.add(full_link)
+                    articles.append({"title": title_text, "link": full_link, "source": source_name})
+
             for tag in soup.find_all('a', href=True):
                 link = tag['href']
                 if link in seen_links:
                     continue
                 text = tag.get_text(strip=True)
+                full_link = urllib.parse.urljoin(base_url, link) if not link.startswith('http') else link
+                if is_blocked_section_url(full_link):
+                    continue
+
+                # Recovery path for date-based article URLs that may have short/generic anchor text.
+                # This helps catch links like /news/2026/05/07/... or /print-edition/... that are often
+                # rendered in compact blocks and can be skipped by strict text-length filters.
+                date_url = re.search(r'/20\d{2}/\d{2}/\d{2}/', full_link)
+                is_recovery_domain = (
+                    ('bd-pratidin.com' in full_link.lower()) or
+                    ('kalerkantho.com' in full_link.lower())
+                )
+                is_recovery_path = (
+                    '/last-page/' in full_link.lower() or
+                    '/print-edition/' in full_link.lower() or
+                    '/news/' in full_link.lower()
+                )
+                if is_recovery_domain and (date_url or is_recovery_path):
+                    skip_url_zones = ['/tag/', '/category/', '/archive/', '/search/', '/author/',
+                                      '/login', '/register', '/about', '/contact', '/privacy',
+                                      '/terms', '/sitemap', '/feed', '/rss', '/atom',
+                                      '/wp-admin', '/wp-content', '/wp-includes', '/cdn-cgi',
+                                      'facebook.com', 'twitter.com', 'youtube.com', 'instagram.com',
+                                      'wa.me', 't.me']
+                    if not any(z in full_link.lower() for z in skip_url_zones):
+                        if is_blocked_section_url(full_link):
+                            continue
+                        fallback_title = text if text and len(text) >= 8 else full_link.rstrip('/').split('/')[-1].replace('-', ' ')
+                        if is_generic_title(fallback_title):
+                            continue
+                        # Strict guard for recovery path: require core target signal in title/url context.
+                        recovery_context = f"{fallback_title} {full_link.replace('-', ' ').replace('_', ' ')}"
+                        if not is_core_target_match(recovery_context):
+                            continue
+                        seen_links.add(link)
+                        articles.append({"title": fallback_title, "link": full_link, "source": source_name})
+                        continue
+
                 if not text or len(text) < 20:
                     continue
                 parent_classes = ' '.join(tag.parent.get('class', [])) if tag.parent else ''
@@ -504,13 +959,26 @@ def parse_html(data, source_name, base_url):
                               'related-articles', 'most-read', 'popular']
                 if any(z in parent_classes.lower() for z in skip_zones):
                     continue
-                if not is_keyword_match(text) or is_excluded(text):
+                full_text = text
+                # SMART CHECK: If the link text is generic (like "Read more"), check the parent container's text
+                if len(text) < 15 or any(word in text.lower() for word in ["read more", "full story", "click here", "বিস্তারিত"]):
+                        heading_node = tag.parent.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'b'])
+                        if not heading_node and tag.parent.parent:
+                            heading_node = tag.parent.parent.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'b'])
+                        if not heading_node and tag.parent.parent.parent:
+                            heading_node = tag.parent.parent.parent.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'b'])
+
+                        heading = heading_node.get_text(strip=True) if heading_node else ""
+                        if len(heading) > 15:
+                            full_text = heading
+                        elif is_keyword_match(link.replace('-', ' ').replace('_', ' ')):
+                            full_text = link.replace('-', ' ').replace('_', ' ')
+                        else:
+                            continue
+                
+                if not is_keyword_match(full_text) or should_exclude_text(full_text):
                     continue
-                if text.count(' ') < 3:
-                    continue
-                if '://' in text or text.startswith('/'):
-                    continue
-                full_link = urllib.parse.urljoin(base_url, link) if not link.startswith('http') else link
+                    
                 skip_url_zones = ['/tag/', '/category/', '/archive/', '/search/', '/author/',
                                   '/login', '/register', '/about', '/contact', '/privacy',
                                   '/terms', '/sitemap', '/feed', '/rss', '/atom',
@@ -519,8 +987,10 @@ def parse_html(data, source_name, base_url):
                                   'instagram.com', 'wa.me', 't.me']
                 if any(z in full_link.lower() for z in skip_url_zones):
                     continue
+                if is_blocked_section_url(full_link):
+                    continue
                 seen_links.add(link)
-                articles.append({"title": text, "link": full_link, "source": source_name})
+                articles.append({"title": full_text, "link": full_link, "source": source_name})
         else:
             html_str = data.decode('utf-8', errors='ignore')
             link_pattern = re.compile(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.DOTALL)
@@ -531,12 +1001,41 @@ def parse_html(data, source_name, base_url):
                     continue
                 if text.count(' ') < 3:
                     continue
-                if not is_keyword_match(text) or is_excluded(text):
+                if not is_keyword_match(text) or should_exclude_text(text):
                     continue
                 full_link = urllib.parse.urljoin(base_url, link) if not link.startswith('http') else link
                 articles.append({"title": text, "link": full_link, "source": source_name})
     except Exception as e:
         log(f"HTML parse error ({source_name}): {e}")
+    return articles
+
+def parse_sitemap(data, source_name):
+    articles = []
+    seen = set()
+    try:
+        root = ET.fromstring(data)
+        for url_node in root.findall('.//{*}url'):
+            loc = url_node.find('{*}loc')
+            if loc is None or not loc.text:
+                continue
+            link = loc.text.strip()
+            if not link or link in seen:
+                continue
+            seen.add(link)
+
+            title_node = url_node.find('.//{*}title')
+            keywords_node = url_node.find('.//{*}keywords')
+            slug = link.rstrip('/').split('/')[-1]
+            candidate_title = title_node.text.strip() if (title_node is not None and title_node.text) else slug.replace('-', ' ').replace('_', ' ')
+            keyword_hint = keywords_node.text.strip() if (keywords_node is not None and keywords_node.text) else ""
+            candidate_text = f"{candidate_title} {keyword_hint}".strip()
+
+            if not is_keyword_match(candidate_text) or should_exclude_text(candidate_text):
+                continue
+
+            articles.append({"title": candidate_title, "link": link, "source": source_name})
+    except Exception as e:
+        log(f"Sitemap parse error ({source_name}): {e}")
     return articles
 
 def parse_bengali_date(text):
@@ -701,44 +1200,61 @@ def verify_article(article, start_time, end_time):
         body = extract_article_body(html_str)
         full_text = article['title'] + " " + body
 
-        if len(body) > 50:
-            # Only check keyword relevance on body (not exclusions, those apply to title only)
-            if not is_keyword_match(full_text):
-                log(f"  ⏭ Irrelevant (no keyword in body): {article['title'][:60]}...")
-                return None
+        if is_generic_title(article['title']):
+            log(f"  ⏭ Generic title: {article['title'][:60]}...")
+            return None
 
-            # Extra smart check for foreign deals using full body
-            foreign_countries = [
-                "venezuela", "myanmar", "thailand", "malaysia", "singapore",
-                "vietnam", "philippines", "indonesia", "nepal", "bhutan",
-                "maldives", "turkey", "turkiye", "algeria", "morocco", "tunisia",
-                "turkmenistan", "kazakhstan", "uzbekistan", "azerbaijan",
-                "norway", "denmark", "finland", "italy", "spain",
-                "portugal", "netherlands", "switzerland", "austria",
-                "poland", "czech", "hungary", "romania", "bulgaria",
-                "serbia", "croatia", "mexico", "argentina", "chile",
-                "peru", "colombia", "kenya", "nigeria", "egypt", "russia"
-            ]
-            deal_words = [
-                "signs deal", "signs agreement", "signs pact", "signs mou",
-                "signed deal", "signed agreement", "signed pact", "signed mou",
-                "inked deal", "inked agreement", "inked pact",
-                "deal with", "agreement with", "pact with",
-                "partnership with", "joint venture", "collaboration with",
-                "import from", "export to", "supply from", "supply to"
-            ]
-            body_lower = body.lower()
-            has_foreign = any(country in body_lower for country in foreign_countries)
-            has_deal = any(dw in body_lower for dw in deal_words)
-            if has_foreign and has_deal:
-                log(f"  ⏭ Foreign deal: {article['title'][:60]}...")
-                return None
-            if has_foreign and re.search(r'\b(with us|with bangladesh)\b', body_lower):
-                log(f"  ⏭ Foreign deal (with BD): {article['title'][:60]}...")
-                return None
+        if STRICT_CORE_ONLY and not is_core_target_match(full_text):
+            log(f"  ⏭ Not core target: {article['title'][:60]}...")
+            return None
+
+        # Always check keyword relevance, even for short bodies.
+        if not is_keyword_match(full_text):
+            log(f"  ⏭ Irrelevant (no target keyword): {article['title'][:60]}...")
+            return None
+
+        # Extra smart check for foreign deals using full body
+        foreign_countries = [
+            "venezuela", "myanmar", "thailand", "malaysia", "singapore",
+            "vietnam", "philippines", "indonesia", "nepal", "bhutan",
+            "maldives", "turkey", "turkiye", "algeria", "morocco", "tunisia",
+            "turkmenistan", "kazakhstan", "uzbekistan", "azerbaijan",
+            "norway", "denmark", "finland", "italy", "spain",
+            "portugal", "netherlands", "switzerland", "austria",
+            "poland", "czech", "hungary", "romania", "bulgaria",
+            "serbia", "croatia", "mexico", "argentina", "chile",
+            "peru", "colombia", "kenya", "nigeria", "egypt", "russia"
+        ]
+        deal_words = [
+            "signs deal", "signs agreement", "signs pact", "signs mou",
+            "signed deal", "signed agreement", "signed pact", "signed mou",
+            "inked deal", "inked agreement", "inked pact",
+            "deal with", "agreement with", "pact with",
+            "partnership with", "joint venture", "collaboration with",
+            "import from", "export to", "supply from", "supply to"
+        ]
+        body_lower = body.lower()
+        has_foreign = any(country in body_lower for country in foreign_countries)
+        has_deal = any(dw in body_lower for dw in deal_words)
+        if has_foreign and has_deal:
+            log(f"  ⏭ Foreign deal: {article['title'][:60]}...")
+            return None
+        if has_foreign and re.search(r'\b(with us|with bangladesh)\b', body_lower):
+            log(f"  ⏭ Foreign deal (with BD): {article['title'][:60]}...")
+            return None
 
         date_str = pub_date.strftime('%Y-%m-%d %H:%M') if pub_date else "no date"
         log(f"  ✅ {date_str} — {article['title'][:80]}...")
+        # --- GEMINI AI SMART FILTER ---
+        if HAS_GENAI and GEMINI_API_KEY and AI_FILTER_ENABLED:
+            relevance = ai_verify_relevance(article['title'], body)
+            if not relevance:
+                log(f"  🤖 AI Filtered (Irrelevant): {article['title'][:60]}...")
+                return None
+            if AI_SUMMARIZE_ENABLED:
+                summary = ai_summarize_article(article['title'], body)
+                if summary:
+                    article['summary'] = summary
         return article
     except Exception as e:
         log(f"  ⏭ Error verifying: {article['title'][:60]}... ({e})")
@@ -746,7 +1262,7 @@ def verify_article(article, start_time, end_time):
 
 def scrape_source(source, start_time, end_time):
     name = source['name']
-    urls_to_scan = source.get('urls', [source.get('url')] if source.get('url') else [])
+    urls_to_scan = get_urls_to_scan(source)
     all_articles = []
     any_success = False
 
@@ -762,6 +1278,16 @@ def scrape_source(source, start_time, end_time):
             any_success = True
             if source.get('type', 'html') == 'rss':
                 articles = parse_rss(data, name, start_time, end_time)
+            elif source.get('type', 'html') == 'sitemap':
+                articles = parse_sitemap(data, name)
+                if articles:
+                    verified = []
+                    for art in articles:
+                        result = verify_article(art, start_time, end_time)
+                        if result is not None:
+                            verified.append(result)
+                        time.sleep(0.2)
+                    articles = verified
             else:
                 articles = parse_html(data, name, url)
                 articles = [a for a in articles if a is not None]
@@ -786,33 +1312,97 @@ def scrape_source(source, start_time, end_time):
         
     return all_articles
 
+
+def get_urls_to_scan(source):
+    urls = list(source.get('urls', [source.get('url')] if source.get('url') else []))
+    urls = [u for u in urls if u]
+    if source.get('type', 'html') != 'html' or not urls:
+        return urls
+
+    # Use first URL as canonical base for hint expansion.
+    base_url = urls[0]
+    parsed = urllib.parse.urlparse(base_url)
+    if not parsed.scheme or not parsed.netloc:
+        return urls
+
+    host = parsed.netloc.lower()
+    if host.startswith('www.'):
+        host = host[4:]
+
+    hints = []
+    for domain, paths in DOMAIN_SECTION_HINTS.items():
+        if host == domain or host.endswith('.' + domain):
+            hints = paths
+            break
+
+    # Always include a conservative common set for all newspaper domains,
+    # then merge any domain-specific hints.
+    hints = list(dict.fromkeys(COMMON_SECTION_HINTS + hints))
+
+    expanded = [u for u in urls if (not is_blocked_section_url(u) and not is_known_bad_section_url(u))]
+    for path in hints:
+        try:
+            candidate = urllib.parse.urljoin(f"{parsed.scheme}://{parsed.netloc}/", path)
+            if not is_blocked_section_url(candidate) and not is_known_bad_section_url(candidate):
+                expanded.append(candidate)
+        except Exception:
+            continue
+
+    # Keep order, drop duplicates
+    seen = set()
+    unique = []
+    for u in expanded:
+        if u in seen:
+            continue
+        seen.add(u)
+        unique.append(u)
+    return unique
+
+
+def is_blocked_section_url(url):
+    u = (url or "").lower()
+    return any(k in u for k in BLOCKED_SECTION_KEYWORDS)
+
 # --- MAIN SCRAPE ---
-def scrape_all():
+def scrape_all(ignore_sent_history=False):
     log("=" * 50)
     log("News Aggregator Started")
     log("=" * 50)
     load_stats()
+    load_bad_sections()
+    stats_before = {
+        name: (s.get("success", 0), s.get("fail", 0))
+        for name, s in SOURCE_STATS.items()
+    }
     
     bd_tz = datetime.timezone(datetime.timedelta(hours=6))
     now_bd = datetime.datetime.now(bd_tz)
-    # Daily Digest time is 7:00 AM to 7:59 AM
-    is_digest_time = (now_bd.hour == 7)
+    digest_state = load_digest_state()
+    today_bd = now_bd.strftime("%Y-%m-%d")
+    last_digest_date = digest_state.get("last_digest_date")
+    force_digest = os.environ.get("FORCE_DIGEST", "").strip().lower() in ("1", "true", "yes", "on")
+
+    in_digest_window = (now_bd.hour == DIGEST_HOUR_BD)
+    if DIGEST_CATCHUP_HOURS > 0 and now_bd.hour > DIGEST_HOUR_BD:
+        in_digest_window = now_bd.hour <= (DIGEST_HOUR_BD + DIGEST_CATCHUP_HOURS)
+    should_send_daily_digest = force_digest or (in_digest_window and last_digest_date != today_bd)
     
     search_query = os.environ.get("SEARCH_QUERY")
     if search_query:
         log(f"Running in SEARCH MODE for: {search_query}")
         start_time = now_bd - datetime.timedelta(days=7)
     else:
-        # If it's 7 AM, we scan the full 24 hours for the digest.
+        # If we're in digest window, scan full 24 hours for digest.
         # Otherwise, we scan a shorter window (2.5 hours) to catch new articles for alerts.
-        if is_digest_time:
+        if should_send_daily_digest:
             start_time = now_bd - datetime.timedelta(hours=24)
         else:
             start_time = now_bd - datetime.timedelta(hours=2.5)
         
-    sent_articles = load_sent_articles()
+    sent_articles = set() if ignore_sent_history else load_sent_articles()
     all_new = []
     priority_news = []
+    run_seen_links = set()
     
     log(f"Scanning {len(SOURCES)} sources (parallel)...")
     with ThreadPoolExecutor(max_workers=8) as executor:
@@ -822,7 +1412,10 @@ def scrape_all():
             try:
                 articles = future.result()
                 for art in articles:
-                    if art['link'] not in sent_articles:
+                    if art['link'] in run_seen_links:
+                        continue
+                    if ignore_sent_history or art['link'] not in sent_articles:
+                        run_seen_links.add(art['link'])
                         if search_query:
                             if search_query.lower() in art['title'].lower():
                                 all_new.append(art)
@@ -833,14 +1426,39 @@ def scrape_all():
             except Exception as e:
                 log(f"  Error processing {source['name']}: {e}")
 
+    if EXTRA_ARTICLE_URLS:
+        log(f"Checking {len(EXTRA_ARTICLE_URLS)} extra direct article URLs...")
+        for extra_url in EXTRA_ARTICLE_URLS:
+            extra_article = {"title": extra_url, "link": extra_url, "source": "Manual URL"}
+            verified = verify_article(extra_article, start_time, now_bd)
+            if verified is not None:
+                if verified['link'] in run_seen_links:
+                    continue
+                if ignore_sent_history or verified['link'] not in sent_articles:
+                    run_seen_links.add(verified['link'])
+                    all_new.append(verified)
+                    if is_priority_match(verified['title']):
+                        priority_news.append(verified)
+
     save_stats()
+    save_bad_sections()
+
+    successful_sources = 0
+    failed_sources = 0
+    for name, stats in SOURCE_STATS.items():
+        prev_success, prev_fail = stats_before.get(name, (0, 0))
+        if stats.get("success", 0) > prev_success:
+            successful_sources += 1
+        if stats.get("fail", 0) > prev_fail:
+            failed_sources += 1
+    log(f"Health: {successful_sources} sources succeeded, {failed_sources} sources failed this run")
 
     if search_query:
         if all_new:
             msg = f"🔍 <b>Search Results: '{search_query}'</b>\n" + "-"*30 + "\n\n"
             for i, art in enumerate(all_new[:15], 1):
                 msg += f"{i}. <a href='{html.escape(art['link'])}'>{html.escape(art['title'])}</a>\n\n"
-            send_telegram_retry(msg)
+            send_telegram_chunked(msg)
         else:
             send_telegram_retry(f"🔍 Search for '{search_query}' yielded no new results.")
         return
@@ -851,11 +1469,11 @@ def scrape_all():
         for art in priority_news:
             msg += f"🔥 <b>{html.escape(art['title'])}</b>\n📌 {art['source']}\n🔗 <a href='{html.escape(art['link'])}'>Read Article</a>\n\n"
             sent_articles.add(art['link'])
-        send_telegram_retry(msg)
+        send_telegram_chunked(msg)
         save_sent_articles(sent_articles)
 
-    # 2. Handle Daily Digest (7 AM)
-    if is_digest_time:
+    # 2. Handle Daily Digest
+    if should_send_daily_digest:
         if all_new:
             header = f"☀️ <b>Daily News Digest — {now_bd.strftime('%d %b %Y')}</b>\n"
             header += f"Found {len(all_new)} relevant articles.\n" + "="*30 + "\n\n"
@@ -866,18 +1484,32 @@ def scrape_all():
             body = ""
             for i, art in enumerate(all_new, 1):
                 prefix = "🔴 " if is_priority_match(art['title']) else f"{i}. "
-                item = f"{prefix}<a href='{html.escape(art['link'])}'>{html.escape(art['title'])}</a>\n📌 {art['source']}\n\n"
-                if len(header + body + item) > 4000:
-                    send_telegram_retry(header + body)
+                summary_text = f"\n📝 <i>{html.escape(art.get('summary', ''))}</i>" if art.get('summary') else ""
+                item = f"{prefix}<a href='{html.escape(art['link'])}'>{html.escape(art['title'])}</a>\n📌 {art['source']}{summary_text}\n\n"
+                if len(header + body + item) > 3800:
+                    send_telegram_chunked(header + body)
                     header = ""
                     body = ""
                 body += item
                 sent_articles.add(art['link'])
             
-            send_telegram_retry(header + body)
-            save_sent_articles(sent_articles)
+            sent_ok = send_telegram_chunked(header + body)
+            if sent_ok:
+                log(f"Digest sent to Telegram ({len(all_new)} articles)")
+                save_sent_articles(sent_articles)
+                digest_state["last_digest_date"] = today_bd
+                digest_state["last_digest_sent_at"] = now_bd.strftime("%Y-%m-%d %H:%M:%S")
+                save_digest_state(digest_state)
+            else:
+                log("Digest send failed; state not advanced so it can retry later")
         else:
-            send_telegram_retry("☀️ Good Morning! No new energy news found in the last 24 hours.")
+            sent_ok = send_telegram_retry("☀️ Good Morning! No new energy news found in the last 24 hours.")
+            if sent_ok:
+                digest_state["last_digest_date"] = today_bd
+                digest_state["last_digest_sent_at"] = now_bd.strftime("%Y-%m-%d %H:%M:%S")
+                save_digest_state(digest_state)
+            else:
+                log("No-news digest send failed; state not advanced so it can retry later")
     
     log(f"Scrape completed. Found {len(all_new)} new articles.")
 
@@ -910,8 +1542,11 @@ def handle_command(cmd):
         send_telegram_retry(msg)
     elif cmd == "trigger":
         scrape_all()
+    elif cmd == "last24":
+        os.environ["FORCE_DIGEST"] = "true"
+        scrape_all(ignore_sent_history=True)
     else:
-        send_telegram_retry("Unknown command. Use: /stats, /sources, /trigger")
+        send_telegram_retry("Unknown command. Use: /stats, /sources, /trigger, /last24")
 
 # --- HELPERS ---
 def get_target_timeframe():
@@ -919,6 +1554,56 @@ def get_target_timeframe():
     now_bd = datetime.datetime.now(bd_tz)
     start_time = now_bd - datetime.timedelta(hours=24)
     return start_time, now_bd
+
+# --- AI LOGIC ---
+def ai_verify_relevance(title, body):
+    """Use Gemini to verify if the article is actually about BD energy sector."""
+    if not HAS_GENAI or not gemini_model:
+        return True
+    
+    prompt = f"""
+    You are a professional energy sector analyst for Bangladesh. 
+    Analyze the following article (Title and Snippet) and determine if it is directly relevant to:
+    1. Bangladesh's Natural Gas, LNG, or Coal mining sector.
+    2. Petrobangla or its subsidiaries (Titas, Bapex, GTCL, etc.).
+    3. Major energy infrastructure (pipelines, drilling, extraction) in Bangladesh.
+    
+    Exclude: LPG cylinders, international oil prices (unless affecting BD power/gas), generic global climate news, or routine transport fare news.
+    
+    Title: {title}
+    Snippet: {body[:1500]}
+    
+    Answer ONLY 'YES' if it is highly relevant, or 'NO' if it is not.
+    """
+    try:
+        response = gemini_model.generate_content(prompt)
+        answer = response.text.strip().upper()
+        return "YES" in answer
+    except Exception as e:
+        log(f"  🤖 AI Error (Filter): {e}")
+        return True # Fallback to true so we don't miss news on error
+
+def ai_summarize_article(title, body):
+    """Generate a 2-sentence summary for the article."""
+    if not HAS_GENAI or not gemini_model or not body:
+        return None
+    
+    prompt = f"""
+    Summarize this news article in 2 concise sentences for a professional energy industry update.
+    Focus on the core impact (e.g. gas production increase, pipeline leak, new drilling contract).
+    Language: If the title is in Bengali, provide the summary in Bengali. If English, use English.
+    
+    Title: {title}
+    Text: {body[:2000]}
+    
+    Summary:
+    """
+    try:
+        response = gemini_model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        log(f"  🤖 AI Error (Summary): {e}")
+        return None
 
 # --- ENTRY ---
 if __name__ == "__main__":

@@ -7,4 +7,4 @@ if not exist .env (
     echo.
     exit /b 1
 )
-py news_aggregator.py
+py mobile_control_app.py
