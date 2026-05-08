@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang='en'>
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'/>
+  <meta name='apple-mobile-web-app-capable' content='yes'/>
+  <meta name='apple-mobile-web-app-status-bar-style' content='black-translucent'/>
+  <link rel='manifest' href='manifest.json'/>
+  <title>News Pro Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: rgba(30, 41, 59, 0.7);
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+      --primary: #10b981;
+      --primary-glow: rgba(16, 185, 129, 0.3);
+      --accent: #f59e0b;
+      --danger: #ef4444;
+      --glass: rgba(255, 255, 255, 0.03);
+    }
+    
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    
+    body {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(245, 158, 11, 0.1) 0px, transparent 50%);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header { padding: 30px 20px 20px; text-align: center; }
+    .header h1 { margin: 0; font-size: 28px; font-weight: 700; background: linear-gradient(to right, #10b981, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header p { margin: 5px 0 0; color: var(--muted); font-size: 14px; font-weight: 300; }
+
+    .wrap { max-width: 500px; width: 100%; margin: 0 auto; padding: 0 16px 40px; flex: 1; }
+
+    .card { background: var(--card); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 24px; margin-bottom: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+
+    .section-title { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+
+    .btn-group { display: grid; grid-template-columns: 1fr; gap: 12px; }
+
+    button { outline: none; border: none; border-radius: 16px; padding: 16px; font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.5; }
+
+    .btn-cloud { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3); }
+    .btn-outline { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); color: var(--ink); }
+
+    .input-group { margin-bottom: 15px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; margin-left: 4px; }
+    input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px; color: white; font-family: inherit; font-size: 14px; }
+    input:focus { border-color: var(--primary); outline: none; }
+
+    .logs-container { background: #000; border-radius: 16px; padding: 12px; font-family: 'Courier New', monospace; font-size: 11px; color: #10b981; height: 200px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05); }
+    .log-line { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>News Pro Cloud</h1>
+    <p>Mobile Control Center (GitHub Pages)</p>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="section-title">GitHub Authentication</div>
+      <div class="input-group">
+        <label>Personal Access Token (classic with workflow scope)</label>
+        <input id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxx"/>
+      </div>
+      <div class="input-group">
+        <label>Repository (owner/repo)</label>
+        <input id="ghRepo" type="text" value="SharifHossain18/news-aggregator"/>
+      </div>
+      <p style="font-size: 10px; color: var(--muted); margin: 0">Your token is only stored in your browser's local storage.</p>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Cloud Actions</div>
+      <div class="btn-group">
+        <button id="triggerBtn" class="btn-cloud" onclick="triggerCloud('trigger')">
+          <span>🚀</span> Run Alerts Scan
+        </button>
+        <button class="btn-outline" onclick="triggerCloud('digest')">
+          <span>📋</span> Run Daily Digest
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Cloud Activity</div>
+      <div id="logs" class="logs-container">
+        <div class="log-line">Ready. Enter token to begin.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load saved config
+    document.getElementById('ghToken').value = localStorage.getItem('ghToken') || '';
+    document.getElementById('ghRepo').value = localStorage.getItem('ghRepo') || 'SharifHossain18/news-aggregator';
+
+    function addLog(msg) {
+      const box = document.getElementById('logs');
+      const ts = new Date().toLocaleTimeString();
+      box.innerHTML += `<div class="log-line"><span style="color:#4b5563">[${ts}]</span> ${msg}</div>`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function triggerCloud(mode) {
+      const token = document.getElementById('ghToken').value.trim();
+      const repo = document.getElementById('ghRepo').value.trim();
+      
+      if (!token || !repo) {
+        alert("Please enter both Token and Repo path.");
+        return;
+      }
+
+      // Save for next time
+      localStorage.setItem('ghToken', token);
+      localStorage.setItem('ghRepo', repo);
+
+      const btn = document.getElementById('triggerBtn');
+      btn.disabled = true;
+      addLog(`Triggering Cloud Run (${mode})...`);
+
+      try {
+        const url = `https://api.github.com/repos/${repo}/actions/workflows/scrape.yml/dispatches`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          },
+          body: JSON.stringify({
+            ref: 'main',
+            inputs: { mode: mode }
+          })
+        });
+
+        if (response.ok) {
+          addLog("✅ SUCCESS: Workflow dispatched! Scraper is starting on GitHub.");
+          addLog("Check your Telegram in 2-3 minutes.");
+        } else {
+          const err = await response.json();
+          addLog(`❌ ERROR: ${err.message || response.statusText}`);
+        }
+      } catch (e) {
+        addLog(`❌ NETWORK ERROR: ${e.message}`);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
