@@ -3,7 +3,7 @@
 <head>
   <meta charset='utf-8'/>
   <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'/>
-  <title>News Aggregator Pro v2.1 (Cloud)</title>
+  <title>News Aggregator Pro v2.2 (Interactive Cloud)</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
     :root { --bg: #030712; --card: rgba(17, 24, 39, 0.8); --primary: #10b981; --accent: #f59e0b; --ink: #f9fafb; --muted: #6b7280; }
@@ -26,17 +26,36 @@
     .news-meta { font-size: 11px; color: var(--muted); }
     .ai-summary { font-size: 13px; color: #a7f3d0; font-style: italic; margin-top: 8px; line-height: 1.5; }
 
-    .btn-primary { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 16px; width: 100%; font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: none; display: block; text-align: center; }
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 16px; width: 100%; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 10px; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--ink); padding: 12px; border-radius: 12px; width: 100%; cursor: pointer; margin-top: 10px; }
     
     .status-badge { display: inline-flex; align-items: center; background: rgba(16, 185, 129, 0.1); padding: 4px 10px; border-radius: 20px; color: var(--primary); font-size: 10px; font-weight: 700; }
+    
+    input[type="text"], input[type="password"], select { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; font-family: inherit; box-sizing: border-box; }
+    label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 5px; }
+
+    /* Custom Dropdown */
+    .ms-container { position: relative; }
+    .ms-btn { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; cursor: pointer; display: flex; justify-content: space-between; font-size: 14px; }
+    .ms-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #111827; border: 1px solid var(--primary); border-radius: 0 0 16px 16px; display: none; z-index: 100; max-height: 250px; overflow-y: auto; padding: 10px; }
+    .ms-item { display: flex; align-items: center; padding: 10px; font-size: 13px; cursor: pointer; }
+    .ms-item:hover { background: rgba(255,255,255,0.05); }
+
+    .toggle-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #374151; transition: .4s; border-radius: 20px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(20px); }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="header">
-      <h1>Aggregator Pro v2.1</h1>
-      <p>Cloud Intelligence Hub</p>
+      <h1>Aggregator Pro v2.2</h1>
+      <p>Interactive Cloud Hub</p>
     </div>
 
     <div class="tabs">
@@ -46,50 +65,81 @@
 
     <div id="viewNews">
       <div class="card">
-        <div class="section-title">Latest Intelligence</div>
+        <div class="section-title">
+          <span>Latest Intelligence</span>
+          <button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;" onclick="loadNews()">Refresh ↻</button>
+        </div>
         <div id="newsList">Loading news feed...</div>
       </div>
     </div>
 
     <div id="viewSettings" style="display:none">
       <div class="card">
+        <div class="section-title">GitHub API Settings</div>
+        <div style="margin-bottom: 15px;">
+          <label>GITHUB FINE-GRAINED TOKEN</label>
+          <input type="password" id="ghToken" placeholder="github_pat_..." onchange="saveToken()">
+          <div style="font-size: 10px; color: var(--muted); margin-top: 4px;">Needed to trigger scans directly from here.</div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="section-title">Remote Scraper Control</div>
-        <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px;">Use the button below to trigger a new cloud scan on GitHub Actions.</p>
         
-        <div style="margin-bottom: 20px;">
-          <label style="font-size: 11px; color: var(--muted); display: block; margin-bottom: 5px;">TIME RANGE CONTROL</label>
-          <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; font-size: 14px;">
-            Set to Last 1-3 Days in GitHub
+        <div class="toggle-container">
+          <span style="font-size: 14px;">Gemini AI Intelligence</span>
+          <label class="switch"><input type="checkbox" id="aiToggle" checked><span class="slider"></span></label>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+          <div>
+            <label>TIME RANGE</label>
+            <select id="days">
+              <option value="1">1 Day</option>
+              <option value="2">2 Days</option>
+              <option value="3">3 Days</option>
+            </select>
+          </div>
+          <div>
+            <label>SOURCE FILTER</label>
+            <div class="ms-container">
+              <div id="msBtn" class="ms-btn" onclick="toggleDrop()">
+                <span id="msVal">All Sources</span><span>▼</span>
+              </div>
+              <div id="msDrop" class="ms-dropdown">
+                <input type="text" placeholder="Search..." onkeyup="filterSources(this.value)" style="margin-bottom:10px;">
+                <div id="msList">Loading...</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <a href="https://github.com/SharifHossain18/news-aggregator/actions" class="btn-primary" target="_blank">🚀 Open GitHub Scraper</a>
-        <button class="btn-outline" onclick="window.location.reload()">Refresh Data ↻</button>
-      </div>
-      
-      <div class="card">
-        <div class="section-title">System Status</div>
-        <div style="font-size: 13px;">
-          <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <span>Cloud Intelligence</span> <span style="color:var(--primary)">ACTIVE</span>
-          </div>
-          <div style="display:flex; justify-content:space-between;">
-            <span>Version</span> <span style="color:var(--muted)">2.1.0-CLOUD</span>
-          </div>
-        </div>
+        <button id="triggerBtn" class="btn-primary" onclick="triggerScan('trigger')">🚀 Start Cloud Scan</button>
+        <button id="digestBtn" class="btn-outline" onclick="triggerScan('digest')">📋 Run Daily Digest</button>
       </div>
     </div>
   </div>
 
   <script>
+    let selectedSources = [];
+    let allSourceNames = [];
+
+    // Load Token
+    const savedToken = localStorage.getItem('gh_pat_token');
+    if(savedToken) document.getElementById('ghToken').value = savedToken;
+
+    function saveToken() {
+      localStorage.setItem('gh_pat_token', document.getElementById('ghToken').value);
+    }
+
     async function loadNews() {
       const list = document.getElementById('newsList');
       try {
-        const response = await fetch('news_for_web.json?t=' + Date.now());
+        const response = await fetch('../news_for_web.json?t=' + Date.now());
         const data = await response.json();
         
         if (!data || data.length === 0) {
-          list.innerHTML = "<div style='text-align:center; padding:20px; color:var(--muted)'>No news found in cloud feed.</div>";
+          list.innerHTML = "<div style='text-align:center; padding:20px; color:var(--muted)'>No news found. Trigger a scan!</div>";
           return;
         }
 
@@ -108,6 +158,44 @@
       }
     }
 
+    async function loadSources() {
+      try {
+        const response = await fetch('../source_stats.json?t=' + Date.now());
+        const stats = await response.json();
+        allSourceNames = Object.keys(stats).sort();
+        renderSources();
+      } catch (e) {
+        document.getElementById('msList').innerHTML = "Could not load sources.";
+      }
+    }
+
+    function renderSources() {
+      document.getElementById('msList').innerHTML = allSourceNames.map(name => `
+        <div class="ms-item" onclick="toggleSel('${name}')">
+          <input type="checkbox" id="chk_${name.replace(/\s+/g, '')}" ${selectedSources.includes(name)?'checked':''} onclick="event.stopPropagation(); toggleSel('${name}')">
+          <span style="margin-left:8px">${name}</span>
+        </div>
+      `).join('');
+    }
+
+    function toggleDrop() {
+      const d = document.getElementById('msDrop');
+      d.style.display = d.style.display==='block'?'none':'block';
+    }
+
+    function toggleSel(name) {
+      const i = selectedSources.indexOf(name);
+      if (i===-1) selectedSources.push(name); else selectedSources.splice(i, 1);
+      document.getElementById('chk_'+name.replace(/\s+/g, '')).checked = selectedSources.includes(name);
+      document.getElementById('msVal').textContent = selectedSources.length===0 ? "All Sources" : selectedSources.length + " Selected";
+    }
+
+    function filterSources(q) {
+      document.querySelectorAll('.ms-item').forEach(i => {
+        i.style.display = i.textContent.toLowerCase().includes(q.toLowerCase()) ? 'flex' : 'none';
+      });
+    }
+
     function showTab(t) {
       document.getElementById('viewNews').style.display = t==='news'?'block':'none';
       document.getElementById('viewSettings').style.display = t==='settings'?'block':'none';
@@ -115,7 +203,64 @@
       document.getElementById('tabSettings').classList.toggle('active', t==='settings');
     }
 
+    async function triggerScan(mode) {
+      const token = document.getElementById('ghToken').value;
+      if (!token) { alert("Please enter your GitHub Token first."); return; }
+
+      const btn = mode === 'trigger' ? document.getElementById('triggerBtn') : document.getElementById('digestBtn');
+      const oldText = btn.textContent;
+      btn.textContent = "⏳ Starting...";
+      btn.disabled = true;
+
+      const days = document.getElementById('days').value;
+      const no_ai = !document.getElementById('aiToggle').checked;
+      const sourcesStr = selectedSources.join(',');
+
+      try {
+        // Replace 'user/repo' if this forks, hardcoded for now
+        const repo = "SharifHossain18/news-aggregator";
+        const url = `https://api.github.com/repos/${repo}/actions/workflows/scrape.yml/dispatches`;
+        
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ref: 'main',
+            inputs: {
+              mode: mode,
+              days: days,
+              sources: sourcesStr,
+              no_ai: no_ai ? 'true' : 'false'
+            }
+          })
+        });
+
+        if (res.ok) {
+          alert("✅ Cloud Scan Triggered! Check back in ~2 minutes.");
+        } else {
+          const err = await res.json();
+          alert("❌ Error: " + (err.message || "Unauthorized. Check your token."));
+        }
+      } catch(e) {
+        alert("Network error.");
+      }
+      
+      btn.textContent = oldText;
+      btn.disabled = false;
+    }
+
+    window.onclick = (e) => {
+      if (!e.target.closest('.ms-container')) {
+        document.getElementById('msDrop').style.display = 'none';
+      }
+    };
+
     loadNews();
+    loadSources();
   </script>
 </body>
 </html>
