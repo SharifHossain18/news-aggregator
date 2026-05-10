@@ -5,6 +5,9 @@ __pycache__/
 *.pyo
 venv/
 *.json
+!docs/news_for_web.json
+!sent_articles.json
+!source_stats.json
 *.egg-info/
 dist/
 build/
