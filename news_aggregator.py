@@ -243,7 +243,7 @@ BLOCKED_SECTION_KEYWORDS = [
 PRIMARY_PATTERNS = []
 for kw in ["gas", "lng", "petrobangla", "bapex", "bgfcl", "sgfl", "gtcl", "titas", "bakhrabad",
            "jalalabad", "pashchimanchal", "rpgcl", "bcmcl", "mgmcl",
-           "maddhapara", "barapukuria", "coal", "rock", "mining", "extraction", "drilling", "energy", "brahmanbaria"]:
+           "maddhapara", "barapukuria", "coal", "rock", "mining", "extraction", "drilling", "brahmanbaria"]:
     PRIMARY_PATTERNS.append(re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE))
 
 PRIORITY_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE) 
