@@ -103,8 +103,8 @@ SOURCES = [
     },
     {
         "name": "Dhaka Tribune", 
-        "url": "https://www.dhakatribune.com/feed", 
-        "type": "rss"
+        "url": "https://www.dhakatribune.com/news-sitemap.xml", 
+        "type": "sitemap"
     },
     {
         "name": "TBS News", 
@@ -129,9 +129,9 @@ SOURCES = [
     {"name": "Jugantor", "url": "https://www.jugantor.com/", "type": "html"},
     {"name": "Shomoyer Alo", "url": "https://www.shomoyeralo.com/", "type": "html"},
     {"name": "Just Energy News", "url": "https://justenergynews24.com/", "type": "html"},
-    {"name": "Bangla Tribune", "url": "https://www.banglatribune.com/feed", "type": "rss"},
+    {"name": "Bangla Tribune", "url": "https://www.banglatribune.com/news-sitemap.xml", "type": "sitemap"},
     {"name": "Jago News", "url": "https://www.jagonews24.com/", "type": "html"},
-    {"name": "Ittefaq", "url": "https://www.ittefaq.com.bd/feed", "type": "rss"},
+    {"name": "Ittefaq", "url": "https://www.ittefaq.com.bd/news-sitemap.xml", "type": "sitemap"},
     {"name": "Daily Amardesh", "url": "https://www.dailyamardesh.com/", "type": "html"},
     {"name": "Amader Shomoy", "url": "https://www.amadershomoy.com/", "type": "html"},
     {"name": "Alokito Bangladesh", "url": "https://www.alokitobangladesh.com/", "type": "html"},
@@ -162,7 +162,7 @@ SOURCES = [
     {"name": "Bangladesh Today", "url": "https://thebangladeshtoday.com/", "type": "html"},
     {"name": "New Nation", "url": "https://dailynewnation.com/", "type": "html"},
     {"name": "New Age", "url": "https://www.newagebd.net/", "type": "html"},
-    {"name": "Observer", "url": "https://www.observerbd.com/rss.php", "type": "rss"},
+    {"name": "Observer", "url": "https://www.observerbd.com/sitemap.php", "type": "sitemap"},
     {"name": "Daily Post", "url": "https://bangladeshpost.net/", "type": "html"},
     {
         "name": "Daily Sun",
