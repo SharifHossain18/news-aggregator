@@ -54,6 +54,8 @@
     input:checked + .slider:before { transform: translateX(20px); }
 
     .scan-info { background: rgba(16, 185, 129, 0.05); border: 1px dashed rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .scanning-active { border-color: #3b82f6 !important; background: rgba(59, 130, 246, 0.1) !important; animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     .scan-info-left { display: flex; flex-direction: column; }
     .scan-info-label { font-size: 10px; color: var(--muted); text-transform: uppercase; }
     .scan-info-val { font-size: 13px; font-weight: 700; color: var(--primary); }
@@ -78,8 +80,8 @@
           <button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;" onclick="loadNews()">Refresh ↻</button>
         </div>
         <div id="scanStats" class="scan-info" style="display:none">
-          <div class="scan-info-left">
-            <span class="scan-info-label">Last Duration</span>
+          <div class="scan-info-left" id="scanLabelBox">
+            <span class="scan-info-label" id="scanLabel">Last Duration</span>
             <span id="scanDuration" class="scan-info-val">--</span>
           </div>
           <div class="scan-info-left" style="align-items:flex-end">
@@ -271,7 +273,26 @@
         });
 
         if (res.ok) {
-          alert("✅ Cloud Scan Triggered! Check back in ~2 minutes.");
+          btn.textContent = "🚀 Scan Started!";
+          btn.style.background = "#10b981";
+          
+          // Show scanning status in the banner
+          const statsDiv = document.getElementById('scanStats');
+          const scanLabel = document.getElementById('scanLabel');
+          statsDiv.style.display = 'flex';
+          statsDiv.classList.add('scanning-active');
+          scanLabel.textContent = "🚀 SCANNING...";
+          
+          setTimeout(() => {
+            btn.textContent = oldText;
+            btn.disabled = false;
+            btn.style.background = "";
+            // Keep the banner "Scanning" for 3 minutes or until next refresh
+            setTimeout(() => {
+                statsDiv.classList.remove('scanning-active');
+                scanLabel.textContent = "Last Duration";
+            }, 3 * 60 * 1000);
+          }, 5000);
         } else {
           const err = await res.json();
           alert("❌ Error: " + (err.message || "Unauthorized. Check your token."));
