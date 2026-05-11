@@ -52,6 +52,11 @@
     .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
     input:checked + .slider { background-color: var(--primary); }
     input:checked + .slider:before { transform: translateX(20px); }
+
+    .scan-info { background: rgba(16, 185, 129, 0.05); border: 1px dashed rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .scan-info-left { display: flex; flex-direction: column; }
+    .scan-info-label { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+    .scan-info-val { font-size: 13px; font-weight: 700; color: var(--primary); }
   </style>
 </head>
 <body>
@@ -71,6 +76,16 @@
         <div class="section-title">
           <span>Latest Intelligence</span>
           <button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;" onclick="loadNews()">Refresh ↻</button>
+        </div>
+        <div id="scanStats" class="scan-info" style="display:none">
+          <div class="scan-info-left">
+            <span class="scan-info-label">Last Duration</span>
+            <span id="scanDuration" class="scan-info-val">--</span>
+          </div>
+          <div class="scan-info-left" style="align-items:flex-end">
+            <span class="scan-info-label">Source Health</span>
+            <span id="scanHealth" class="scan-info-val">--</span>
+          </div>
         </div>
         <div id="newsList">Loading news feed...</div>
       </div>
@@ -137,10 +152,23 @@
 
     async function loadNews() {
       const list = document.getElementById('newsList');
+      const statsDiv = document.getElementById('scanStats');
       try {
-        const response = await fetch('./news_data.json?t=' + Date.now());
-        const data = await response.json();
+        // Load news
+        const nRes = await fetch('./news_data.json?t=' + Date.now());
+        const data = await nRes.json();
         
+        // Load meta stats
+        const sRes = await fetch('./source_stats.json?t=' + Date.now());
+        const stats = await sRes.json();
+        const meta = stats._meta;
+
+        if (meta) {
+          statsDiv.style.display = 'flex';
+          document.getElementById('scanDuration').textContent = meta.duration || '--';
+          document.getElementById('scanHealth').textContent = `${meta.successful_sources || 0} OK / ${meta.failed_sources || 0} Fail`;
+        }
+
         if (!data || data.length === 0) {
           list.innerHTML = "<div style='text-align:center; padding:20px; color:var(--muted)'>No news found. Trigger a scan!</div>";
           return;

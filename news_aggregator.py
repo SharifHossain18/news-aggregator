@@ -1418,6 +1418,7 @@ def is_blocked_section_url(url):
 
 # --- MAIN SCRAPE ---
 def scrape_all(ignore_sent_history=False):
+    start_run_time = time.time()
     log("=" * 50)
     log("News Aggregator Started")
     log("=" * 50)
@@ -1575,7 +1576,21 @@ def scrape_all(ignore_sent_history=False):
     if all_new:
         save_to_web(all_new)
     
-    log(f"Scrape completed. Found {len(all_new)} new articles.")
+    end_run_time = time.time()
+    duration_sec = int(end_run_time - start_run_time)
+    duration_str = f"{duration_sec // 60}m {duration_sec % 60}s"
+    
+    # Save global stats
+    SOURCE_STATS["_meta"] = {
+        "last_run_at": now_bd.strftime("%Y-%m-%d %H:%M:%S"),
+        "duration": duration_str,
+        "articles_found": len(all_new),
+        "successful_sources": successful_sources,
+        "failed_sources": failed_sources
+    }
+    save_stats()
+    
+    log(f"Scrape completed in {duration_str}. Found {len(all_new)} new articles.")
 
 
 # --- ADMIN COMMANDS ---
