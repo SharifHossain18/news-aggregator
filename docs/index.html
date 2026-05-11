@@ -176,14 +176,19 @@
           return;
         }
 
-        list.innerHTML = data.map(n => `
+        list.innerHTML = data.map((n, i) => `
           <div class="news-item">
-            <a href="${n.link}" class="news-title" target="_blank">${n.title}</a>
-            <div class="news-meta">
-              <span class="status-badge">${n.source}</span>
-              <span style="margin-left:8px">🕒 ${n.time || 'Today'}</span>
+            <div style="display:flex; align-items: flex-start; gap: 10px;">
+              <span style="font-size: 14px; font-weight: 700; color: var(--muted); margin-top: 3px;">${i + 1}.</span>
+              <div style="flex:1">
+                <a href="${n.link}" class="news-title" target="_blank">${n.title}</a>
+                <div class="news-meta">
+                  <span class="status-badge">${n.source}</span>
+                  <span style="margin-left:8px">🕒 ${n.time || 'Today'}</span>
+                </div>
+                ${n.summary ? `<div class="ai-summary">📝 ${n.summary}</div>` : ''}
+              </div>
             </div>
-            ${n.summary ? `<div class="ai-summary">📝 ${n.summary}</div>` : ''}
           </div>
         `).join('');
       } catch (e) {
