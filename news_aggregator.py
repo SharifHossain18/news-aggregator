@@ -34,6 +34,8 @@ EXTRA_ARTICLE_URLS = [u.strip() for u in os.environ.get("EXTRA_ARTICLE_URLS", ""
 STRICT_CORE_ONLY = os.environ.get("STRICT_CORE_ONLY", "false").strip().lower() in ("1", "true", "yes", "on")
 DIGEST_HOUR_BD = int(os.environ.get("DIGEST_HOUR_BD", "7"))
 DIGEST_CATCHUP_HOURS = int(os.environ.get("DIGEST_CATCHUP_HOURS", "5"))
+SCAN_DAYS = int(os.environ.get("SCAN_DAYS", "0"))
+SCAN_SOURCES = [s.strip().lower() for s in os.environ.get("SCAN_SOURCES", "").split(",") if s.strip()]
 if (not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID) and not SELF_CHECK_MODE:
     print("ERROR: Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env file")
     print("Create .env with:\nTELEGRAM_BOT_TOKEN=your_token\nTELEGRAM_CHAT_ID=your_chat_id")
@@ -1442,6 +1444,9 @@ def scrape_all(ignore_sent_history=False):
     if search_query:
         log(f"Running in SEARCH MODE for: {search_query}")
         start_time = now_bd - datetime.timedelta(days=7)
+    elif SCAN_DAYS > 0:
+        log(f"Running custom scan for last {SCAN_DAYS} days")
+        start_time = now_bd - datetime.timedelta(days=SCAN_DAYS)
     else:
         # If we're in digest window, scan full 24 hours for digest.
         # Otherwise, we scan a shorter window (2.5 hours) to catch new articles for alerts.
@@ -1455,9 +1460,14 @@ def scrape_all(ignore_sent_history=False):
     priority_news = []
     run_seen_links = set()
     
-    log(f"Scanning {len(SOURCES)} sources (parallel)...")
+    active_sources = SOURCES
+    if SCAN_SOURCES:
+        active_sources = [s for s in SOURCES if s['name'].lower() in SCAN_SOURCES]
+        log(f"Filtering for {len(active_sources)} selected sources")
+
+    log(f"Scanning {len(active_sources)} sources (parallel)...")
     with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = {executor.submit(scrape_source, src, start_time, now_bd): src for src in SOURCES}
+        futures = {executor.submit(scrape_source, src, start_time, now_bd): src for src in active_sources}
         for future in as_completed(futures):
             source = futures[future]
             try:
