@@ -61,7 +61,8 @@ if HAS_GENAI and GEMINI_API_KEY:
 
 # --- FILES ---
 SENT_LOG_FILE = "sent_articles.json"
-STATS_FILE = "source_stats.json"
+WEB_DATA_FILE = os.path.join("docs", "news_data.json")
+STATS_FILE = os.path.join("docs", "source_stats.json")
 DIGEST_STATE_FILE = "digest_state.json"
 BAD_SECTION_FILE = "bad_sections.json"
 
@@ -385,7 +386,15 @@ SOURCE_STATS = {}
 
 def load_stats():
     global SOURCE_STATS
-    if os.path.exists(STATS_FILE):
+    # Migration: Check old location if new one doesn't exist
+    if not os.path.exists(STATS_FILE) and os.path.exists("source_stats.json"):
+        try:
+            with open("source_stats.json", "r", encoding="utf-8") as f:
+                SOURCE_STATS = json.load(f)
+            log("Migrated source_stats.json to docs/ folder")
+        except Exception:
+            SOURCE_STATS = {}
+    elif os.path.exists(STATS_FILE):
         try:
             with open(STATS_FILE, "r", encoding="utf-8") as f:
                 SOURCE_STATS = json.load(f)
@@ -393,6 +402,7 @@ def load_stats():
             SOURCE_STATS = {}
 
 def save_stats():
+    os.makedirs("docs", exist_ok=True)
     with open(STATS_FILE, "w", encoding="utf-8") as f:
         json.dump(SOURCE_STATS, f, ensure_ascii=False, indent=2)
 
@@ -425,6 +435,47 @@ def load_bad_sections():
 def save_bad_sections():
     with open(BAD_SECTION_FILE, "w", encoding="utf-8") as f:
         json.dump(BAD_SECTION_PATHS, f, ensure_ascii=False, indent=2)
+
+
+def save_to_web(new_articles):
+    """Saves the latest news to a JSON file for the web dashboard."""
+    if not new_articles:
+        return
+    
+    # Ensure docs directory exists
+    os.makedirs("docs", exist_ok=True)
+    
+    existing_news = []
+    if os.path.exists(WEB_DATA_FILE):
+        try:
+            with open(WEB_DATA_FILE, "r", encoding="utf-8") as f:
+                existing_news = json.load(f)
+        except Exception:
+            existing_news = []
+            
+    # Use link as unique ID
+    seen_links = {a['link'] for a in existing_news}
+    
+    # Add new articles that aren't already in the list
+    added_count = 0
+    for art in new_articles:
+        if art['link'] not in seen_links:
+            # Add timestamp if not present
+            if 'time' not in art:
+                art['time'] = datetime.datetime.now().strftime("%I:%M %p")
+            existing_news.insert(0, art)
+            seen_links.add(art['link'])
+            added_count += 1
+            
+    # Keep only latest 50
+    existing_news = existing_news[:50]
+    
+    try:
+        with open(WEB_DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(existing_news, f, ensure_ascii=False, indent=2)
+        log(f"Web Dashboard updated: {added_count} new articles added to {WEB_DATA_FILE}")
+    except Exception as e:
+        log(f"Error saving to web: {e}")
 
 
 def _host_key(url):
@@ -1510,6 +1561,9 @@ def scrape_all(ignore_sent_history=False):
                 save_digest_state(digest_state)
             else:
                 log("No-news digest send failed; state not advanced so it can retry later")
+    
+    if all_new:
+        save_to_web(all_new)
     
     log(f"Scrape completed. Found {len(all_new)} new articles.")
 

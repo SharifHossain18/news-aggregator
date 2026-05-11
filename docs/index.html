@@ -135,7 +135,7 @@
     async function loadNews() {
       const list = document.getElementById('newsList');
       try {
-        const response = await fetch('../news_for_web.json?t=' + Date.now());
+        const response = await fetch('./news_data.json?t=' + Date.now());
         const data = await response.json();
         
         if (!data || data.length === 0) {
@@ -160,7 +160,7 @@
 
     async function loadSources() {
       try {
-        const response = await fetch('../source_stats.json?t=' + Date.now());
+        const response = await fetch('./source_stats.json?t=' + Date.now());
         const stats = await response.json();
         allSourceNames = Object.keys(stats).sort();
         renderSources();
