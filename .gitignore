@@ -7,6 +7,7 @@ venv/
 *.json
 !docs/news_data.json
 !docs/source_stats.json
+!docs/manifest.json
 !sent_articles.json
 *.egg-info/
 dist/

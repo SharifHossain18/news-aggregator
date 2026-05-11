@@ -5,6 +5,9 @@
   <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'/>
   <title>News Aggregator Pro v2.2 (Interactive Cloud)</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#10b981">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <style>
     :root { --bg: #030712; --card: rgba(17, 24, 39, 0.8); --primary: #10b981; --accent: #f59e0b; --ink: #f9fafb; --muted: #6b7280; }
     body { margin: 0; font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
@@ -258,6 +261,16 @@
         document.getElementById('msDrop').style.display = 'none';
       }
     };
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          console.log('SW Registered!', reg);
+        }).catch(err => {
+          console.log('SW Registration Failed!', err);
+        });
+      });
+    }
 
     loadNews();
     loadSources();
