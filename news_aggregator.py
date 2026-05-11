@@ -460,7 +460,9 @@ def save_to_web(new_articles):
     
     # Add new articles that aren't already in the list
     added_count = 0
-    now_str = datetime.datetime.now().strftime("%I:%M %p")
+    bd_tz = datetime.timezone(datetime.timedelta(hours=6))
+    now_bd = datetime.datetime.now(bd_tz)
+    now_str = now_bd.strftime("%I:%M %p")
     for art in new_articles:
         if art['link'] not in seen_links:
             # Add timestamp if not present (default to scan time)
