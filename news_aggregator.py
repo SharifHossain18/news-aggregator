@@ -460,11 +460,17 @@ def save_to_web(new_articles):
     
     # Add new articles that aren't already in the list
     added_count = 0
+    now_str = datetime.datetime.now().strftime("%I:%M %p")
     for art in new_articles:
         if art['link'] not in seen_links:
-            # Add timestamp if not present
+            # Add timestamp if not present (default to scan time)
             if 'time' not in art:
-                art['time'] = datetime.datetime.now().strftime("%I:%M %p")
+                art['time'] = f"{now_str} (Scan)"
+            else:
+                # If we have a time but no label, it was likely from the source
+                if "(" not in art['time']:
+                    art['time'] = f"{art['time']} (Pub)"
+            
             existing_news.insert(0, art)
             seen_links.add(art['link'])
             added_count += 1
@@ -917,7 +923,13 @@ def parse_rss(data, source_name, start_time, end_time):
                 except Exception:
                     pass
             if is_in_timeframe:
-                articles.append({"title": title.strip(), "link": link.strip(), "source": source_name})
+                art_obj = {"title": title.strip(), "link": link.strip(), "source": source_name}
+                if date_node is not None and date_node.text:
+                    try:
+                        art_obj["time"] = pub_date_bd.strftime("%I:%M %p")
+                    except Exception:
+                        pass
+                articles.append(art_obj)
     except Exception as e:
         log(f"RSS parse error ({source_name}): {e}")
     return articles
