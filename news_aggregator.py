@@ -103,7 +103,7 @@ SOURCES = [
     },
     {
         "name": "Dhaka Tribune", 
-        "url": "https://www.dhakatribune.com/rss.xml", 
+        "url": "https://www.dhakatribune.com/feed", 
         "type": "rss"
     },
     {
@@ -125,13 +125,13 @@ SOURCES = [
         "url": "https://samakal.com/feed",
         "type": "rss"
     },
-    {"name": "Desh Rupantor", "url": "https://www.deshrupantor.com/news_sitemap.xml", "type": "sitemap"},
+    {"name": "Desh Rupantor", "url": "https://www.deshrupantor.com/sitemap.xml", "type": "sitemap"},
     {"name": "Jugantor", "url": "https://www.jugantor.com/", "type": "html"},
     {"name": "Shomoyer Alo", "url": "https://www.shomoyeralo.com/", "type": "html"},
     {"name": "Just Energy News", "url": "https://justenergynews24.com/", "type": "html"},
-    {"name": "Bangla Tribune", "url": "https://www.banglatribune.com/rss/all", "type": "rss"},
+    {"name": "Bangla Tribune", "url": "https://www.banglatribune.com/feed", "type": "rss"},
     {"name": "Jago News", "url": "https://www.jagonews24.com/", "type": "html"},
-    {"name": "Ittefaq", "url": "https://www.ittefaq.com.bd/rss.xml", "type": "rss"},
+    {"name": "Ittefaq", "url": "https://www.ittefaq.com.bd/feed", "type": "rss"},
     {"name": "Daily Amardesh", "url": "https://www.dailyamardesh.com/", "type": "html"},
     {"name": "Amader Shomoy", "url": "https://www.amadershomoy.com/", "type": "html"},
     {"name": "Alokito Bangladesh", "url": "https://www.alokitobangladesh.com/", "type": "html"},
