@@ -669,66 +669,45 @@ except ImportError:
     scraper = None
     log("WARNING: cloudscraper not installed. Some sites may return 403. Run: pip install cloudscraper")
 
-def fetch_url(url, retries=3):
+def fetch_url(url, retries=3, is_xml=False):
     from urllib.parse import quote, urlparse, urlunparse
     parsed = urlparse(url)
     safe_path = quote(parsed.path, safe='/:')
     encoded_url = urlunparse((parsed.scheme, parsed.netloc, safe_path, parsed.params, parsed.query, parsed.fragment))
     
+    # Staggered retry delay
     for i in range(retries + 1):
         try:
-            if scraper:
-                response = scraper.get(encoded_url, timeout=15)
-                if response.status_code == 200:
-                    return response.content
-                else:
-                    log(f"HTTP {response.status_code} for {url} (cloudscraper)")
-                    if response.status_code == 404:
-                        mark_bad_section_url(url)
-
-            # urllib fallback (runs when cloudscraper unavailable or non-200)
-            headers = {
-                "User-Agent": USER_AGENTS[i % len(USER_AGENTS)],
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9,bn;q=0.8",
-                "Upgrade-Insecure-Requests": "1",
-                "Referer": "https://www.google.com/",
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache"
-            }
-            req = urllib.request.Request(encoded_url, headers=headers)
-            secure_ctx = ssl.create_default_context()
-            with urllib.request.urlopen(req, timeout=15, context=secure_ctx) as response:
-                return response.read()
-        except ssl.SSLError as e:
-            try:
-                insecure_ctx = ssl._create_unverified_context()
-                with urllib.request.urlopen(req, timeout=15, context=insecure_ctx) as response:
-                    log(f"SSL fallback used for {url}: {e}")
+            # If XML/Sitemap, try simple urllib first (often bypasses cloud scraper overhead)
+            if is_xml or not scraper:
+                headers = {
+                    "User-Agent": USER_AGENTS[i % len(USER_AGENTS)],
+                    "Accept": "application/xml,text/xml,application/xhtml+xml,text/html;q=0.9,*/*;q=0.8",
+                    "Referer": "https://www.google.com/"
+                }
+                req = urllib.request.Request(encoded_url, headers=headers)
+                ctx = ssl._create_unverified_context()
+                with urllib.request.urlopen(req, timeout=25, context=ctx) as response:
                     return response.read()
-            except Exception as inner:
-                if i == retries:
-                    log(f"SSL fetch error for {url}: {inner}")
-                else:
-                    time.sleep(1)
+            
+            # Use cloudscraper for regular HTML
+            response = scraper.get(encoded_url, timeout=25)
+            if response.status_code == 200:
+                return response.content
+            elif response.status_code == 403:
+                # Fallback to urllib if cloudscraper is blocked
+                raise Exception("403 Blocked")
+            else:
+                log(f"HTTP {response.status_code} for {url}")
+                if response.status_code == 404:
+                    mark_bad_section_url(url)
+
         except Exception as e:
-            if hasattr(e, 'code') and e.code == 403:
-                if i == retries:
-                    log(f"HTTP 403 for {url}")
-                else:
-                    time.sleep(1.2)
-                continue
-            if hasattr(e, 'code') and e.code == 404:
-                mark_bad_section_url(url)
-                if i == retries:
-                    log(f"HTTP 404 for {url}")
-                else:
-                    time.sleep(0.6)
-                continue
             if i == retries:
                 log(f"Fetch error for {url}: {e}")
             else:
-                time.sleep(1)
+                # Wait 1-3 seconds before retry
+                time.sleep(1 + (i * 2))
     return None
 
 # --- KEYWORD MATCHING ---
@@ -1376,8 +1355,11 @@ def scrape_source(source, start_time, end_time):
     
     for url in urls_to_scan:
         if not url: continue
+        # Add a tiny staggered delay to avoid burst requests
+        time.sleep(random.uniform(0.1, 0.5))
         try:
-            data = fetch_url(url)
+            is_xml_type = source.get('type', 'html') in ('rss', 'sitemap')
+            data = fetch_url(url, is_xml=is_xml_type)
             if data is None:
                 continue
             
