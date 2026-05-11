@@ -303,7 +303,7 @@ EXCLUDE_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
                                   "turkmenistan", "kazakhstan", "uzbekistan", "azerbaijan",
                                   "brick kiln", "brickfield", "crop damage", "paddy field",
                                   "stone quarry", "sand lifting", "illegal sand"]]
-EXCLUDE_BENGALI = ["এলপিজি", "সিলিন্ডার", "পুতিন", "বাইডেন", "ইউক্রেন", "রাশিয়া",
+EXCLUDE_BENGALI = ["এলপিজি", "সিলিন্ডার", "এলপি গ্যাস", "এলপিজি গ্যাস", "সিলিন্ডার গ্যাস", "ভোক্তা পর্যায়ে", "পুতিন", "বাইডেন", "ইউক্রেন", "রাশিয়া",
                      "ভারত", "ইসরায়েল", "আশা ভোঁসলে", "সঙ্গীত", "চলচ্চিত্র",
                      "রিসেট বাটন", "হরমুজ", "পারস্য উপসাগর", "বিশ্ব",
                      "বিদ্যুৎ কেন্দ্র", "তাপ বিদ্যুৎ কেন্দ্র", "বিদ্যুৎ",
