@@ -1470,6 +1470,7 @@ def scrape_all(ignore_sent_history=False):
         
     sent_articles = set() if ignore_sent_history else load_sent_articles()
     all_new = []
+    web_news = []
     priority_news = []
     run_seen_links = set()
     
@@ -1488,8 +1489,13 @@ def scrape_all(ignore_sent_history=False):
                 for art in articles:
                     if art['link'] in run_seen_links:
                         continue
+                    run_seen_links.add(art['link'])
+                    
+                    # Always include in web news
+                    web_news.append(art)
+                    
+                    # Only include in Telegram if not already sent
                     if ignore_sent_history or art['link'] not in sent_articles:
-                        run_seen_links.add(art['link'])
                         if search_query:
                             if search_query.lower() in art['title'].lower():
                                 all_new.append(art)
@@ -1508,8 +1514,10 @@ def scrape_all(ignore_sent_history=False):
             if verified is not None:
                 if verified['link'] in run_seen_links:
                     continue
+                run_seen_links.add(verified['link'])
+                web_news.append(verified)
+                
                 if ignore_sent_history or verified['link'] not in sent_articles:
-                    run_seen_links.add(verified['link'])
                     all_new.append(verified)
                     if is_priority_match(verified['title']):
                         priority_news.append(verified)
@@ -1585,8 +1593,8 @@ def scrape_all(ignore_sent_history=False):
             else:
                 log("No-news digest send failed; state not advanced so it can retry later")
     
-    if all_new:
-        save_to_web(all_new)
+    if web_news:
+        save_to_web(web_news)
     
     end_run_time = time.time()
     duration_sec = int(end_run_time - start_run_time)
