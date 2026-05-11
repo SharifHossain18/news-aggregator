@@ -968,8 +968,20 @@ def parse_html(data, source_name, base_url):
                                       'instagram.com', 'wa.me', 't.me']
                     if any(z in full_link.lower() for z in skip_url_zones):
                         continue
+                    
+                    # Try to find time
+                    found_time = None
+                    if box:
+                        time_node = box.find(['time', 'span'], class_=re.compile(r'time|date|published', re.IGNORECASE))
+                        if time_node:
+                            found_time = time_node.get_text(strip=True)
+                    
+                    art_obj = {"title": title_text, "link": full_link, "source": source_name}
+                    if found_time:
+                        art_obj["time"] = found_time
+                    
                     seen_links.add(full_link)
-                    articles.append({"title": title_text, "link": full_link, "source": source_name})
+                    articles.append(art_obj)
 
             for tag in soup.find_all('a', href=True):
                 link = tag['href']
@@ -1011,7 +1023,22 @@ def parse_html(data, source_name, base_url):
                         if not is_core_target_match(recovery_context):
                             continue
                         seen_links.add(link)
-                        articles.append({"title": fallback_title, "link": full_link, "source": source_name})
+                        
+                        # Try to find nearby time
+                        found_time = None
+                        p = tag.parent
+                        for _ in range(3): # Look up 3 levels
+                            if not p: break
+                            t_node = p.find(['time', 'span', 'small'], class_=re.compile(r'time|date|published|hour', re.IGNORECASE))
+                            if t_node:
+                                found_time = t_node.get_text(strip=True)
+                                break
+                            p = p.parent
+
+                        art_obj = {"title": fallback_title, "link": full_link, "source": source_name}
+                        if found_time:
+                            art_obj["time"] = found_time
+                        articles.append(art_obj)
                         continue
 
                 if not text or len(text) < 20:
@@ -1057,7 +1084,22 @@ def parse_html(data, source_name, base_url):
                 if is_blocked_section_url(full_link):
                     continue
                 seen_links.add(link)
-                articles.append({"title": full_text, "link": full_link, "source": source_name})
+                
+                # Try to find nearby time
+                found_time = None
+                p = tag.parent
+                for _ in range(3): # Look up 3 levels
+                    if not p: break
+                    t_node = p.find(['time', 'span'], class_=re.compile(r'time|date|published|hour', re.IGNORECASE))
+                    if t_node:
+                        found_time = t_node.get_text(strip=True)
+                        break
+                    p = p.parent
+
+                art_obj = {"title": full_text, "link": full_link, "source": source_name}
+                if found_time:
+                    art_obj["time"] = found_time
+                articles.append(art_obj)
         else:
             html_str = data.decode('utf-8', errors='ignore')
             link_pattern = re.compile(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.DOTALL)
@@ -1071,6 +1113,7 @@ def parse_html(data, source_name, base_url):
                 if not is_keyword_match(text) or should_exclude_text(text):
                     continue
                 full_link = urllib.parse.urljoin(base_url, link) if not link.startswith('http') else link
+                # Regex mode doesn't easily find nearby tags, so we use scan time here.
                 articles.append({"title": text, "link": full_link, "source": source_name})
     except Exception as e:
         log(f"HTML parse error ({source_name}): {e}")
@@ -1100,7 +1143,17 @@ def parse_sitemap(data, source_name):
             if not is_keyword_match(candidate_text) or should_exclude_text(candidate_text):
                 continue
 
-            articles.append({"title": candidate_title, "link": link, "source": source_name})
+            art_obj = {"title": candidate_title, "link": link, "source": source_name}
+            lastmod_node = url_node.find('{*}lastmod')
+            if lastmod_node is not None and lastmod_node.text:
+                try:
+                    # Sitemap dates are usually ISO format
+                    dt = datetime.datetime.fromisoformat(lastmod_node.text.replace('Z', '+00:00'))
+                    dt_bd = dt.astimezone(datetime.timezone(datetime.timedelta(hours=6)))
+                    art_obj["time"] = dt_bd.strftime("%I:%M %p")
+                except Exception:
+                    pass
+            articles.append(art_obj)
     except Exception as e:
         log(f"Sitemap parse error ({source_name}): {e}")
     return articles
