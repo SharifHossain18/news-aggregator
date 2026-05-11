@@ -135,6 +135,16 @@ SOURCES = [
     {"name": "Daily Amardesh", "url": "https://www.dailyamardesh.com/", "type": "html"},
     {"name": "Amader Shomoy", "url": "https://www.amadershomoy.com/", "type": "html"},
     {"name": "Alokito Bangladesh", "url": "https://www.alokitobangladesh.com/", "type": "html"},
+    {
+        "name": "Google News (Backup)", 
+        "url": "https://news.google.com/rss/search?q=petrobangla+OR+titas+gas+OR+lng+OR+bapex+OR+maddhapara+OR+barapukuria&hl=en-US&gl=US&ceid=US:en", 
+        "type": "rss"
+    },
+    {
+        "name": "Google News BN (Backup)", 
+        "url": "https://news.google.com/rss/search?q=পেট্রোবাংলা+OR+গ্যাস+OR+কয়লা+OR+মধ্যপাড়া+OR+বড়পুকুরিয়া&hl=bn&gl=BD&ceid=BD:bn", 
+        "type": "rss"
+    },
     {"name": "Daily Sangram", "url": "https://dailysangram.com/", "type": "html"},
     {"name": "Jai Jai Din", "url": "https://www.jaijaidin.news/", "type": "html"},
     {"name": "Sangbad", "url": "https://sangbad.net/", "type": "html"},
