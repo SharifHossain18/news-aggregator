@@ -302,6 +302,12 @@
 
     loadNews();
     loadSources();
+
+    // Auto-refresh every 5 minutes
+    setInterval(() => {
+      console.log("Auto-refreshing news feed...");
+      loadNews();
+    }, 5 * 60 * 1000);
   </script>
 </body>
 </html>
