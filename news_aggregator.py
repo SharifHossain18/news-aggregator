@@ -103,12 +103,8 @@ SOURCES = [
     },
     {
         "name": "Dhaka Tribune", 
-        "urls": [
-            "https://www.dhakatribune.com/", 
-            "https://www.dhakatribune.com/business", 
-            "https://www.dhakatribune.com/bangladesh"
-        ], 
-        "type": "html"
+        "url": "https://www.dhakatribune.com/rss.xml", 
+        "type": "rss"
     },
     {
         "name": "TBS News", 
@@ -121,31 +117,21 @@ SOURCES = [
     },
     {
         "name": "Kaler Kantho", 
-        "urls": [
-            "https://www.kalerkantho.com/", 
-            "https://www.kalerkantho.com/online/business", 
-            "https://www.kalerkantho.com/online/national",
-            "https://www.kalerkantho.com/print-edition/last-page"
-        ], 
-        "type": "html"
+        "url": "https://www.kalerkantho.com/rss.xml", 
+        "type": "rss"
     },
     {
         "name": "Samakal",
-        "urls": [
-            "https://samakal.com/",
-            "https://samakal.com/bangladesh",
-            "https://samakal.com/economics",
-            "https://samakal.com/search?search=gas"
-        ],
-        "type": "html"
+        "url": "https://samakal.com/feed",
+        "type": "rss"
     },
-    {"name": "Desh Rupantor", "url": "https://www.deshrupantor.com/", "type": "html"},
+    {"name": "Desh Rupantor", "url": "https://www.deshrupantor.com/news_sitemap.xml", "type": "sitemap"},
     {"name": "Jugantor", "url": "https://www.jugantor.com/", "type": "html"},
     {"name": "Shomoyer Alo", "url": "https://www.shomoyeralo.com/", "type": "html"},
     {"name": "Just Energy News", "url": "https://justenergynews24.com/", "type": "html"},
-    {"name": "Bangla Tribune", "url": "https://www.banglatribune.com/", "type": "html"},
+    {"name": "Bangla Tribune", "url": "https://www.banglatribune.com/rss/all", "type": "rss"},
     {"name": "Jago News", "url": "https://www.jagonews24.com/", "type": "html"},
-    {"name": "Ittefaq", "url": "https://www.ittefaq.com.bd/", "type": "html"},
+    {"name": "Ittefaq", "url": "https://www.ittefaq.com.bd/rss.xml", "type": "rss"},
     {"name": "Daily Amardesh", "url": "https://www.dailyamardesh.com/", "type": "html"},
     {"name": "Amader Shomoy", "url": "https://www.amadershomoy.com/", "type": "html"},
     {"name": "Alokito Bangladesh", "url": "https://www.alokitobangladesh.com/", "type": "html"},
@@ -176,7 +162,7 @@ SOURCES = [
     {"name": "Bangladesh Today", "url": "https://thebangladeshtoday.com/", "type": "html"},
     {"name": "New Nation", "url": "https://dailynewnation.com/", "type": "html"},
     {"name": "New Age", "url": "https://www.newagebd.net/", "type": "html"},
-    {"name": "Observer", "url": "https://observerbd.com/", "type": "html"},
+    {"name": "Observer", "url": "https://www.observerbd.com/rss.php", "type": "rss"},
     {"name": "Daily Post", "url": "https://bangladeshpost.net/", "type": "html"},
     {
         "name": "Daily Sun",
