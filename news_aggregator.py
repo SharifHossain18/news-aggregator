@@ -243,7 +243,7 @@ BLOCKED_SECTION_KEYWORDS = [
 PRIMARY_PATTERNS = []
 for kw in ["gas", "lng", "petrobangla", "bapex", "bgfcl", "sgfl", "gtcl", "titas", "bakhrabad",
            "jalalabad", "pashchimanchal", "rpgcl", "bcmcl", "mgmcl",
-           "maddhapara", "barapukuria", "coal", "rock", "mining", "extraction", "drilling", "brahmanbaria"]:
+           "maddhapara", "barapukuria", "coal", "rock", "mining", "extraction", "drilling"]:
     PRIMARY_PATTERNS.append(re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE))
 
 PRIORITY_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE) 
@@ -256,8 +256,8 @@ PRIMARY_BENGALI = ["গ্যাস", "এলএনজি", "পেট্রো�
                     "আরপিজিসিএল", "জালালাবাদ", "গ্যাসহীন", "গ্যাস সংকট", "কয়লা", "পাথর", "খনি", "উত্তোলন"]
 
 SECONDARY_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
-                       for kw in ["coal", "rock", "karnaphuli", "sundarban"]]
-SECONDARY_BENGALI = ["কয়লা", "পাথর", "কর্ণফুলী", "সুন্দরবন"]
+                       for kw in ["coal", "rock", "karnaphuli", "sundarban", "brahmanbaria"]]
+SECONDARY_BENGALI = ["কয়লা", "পাথর", "কর্ণফুলী", "সুন্দরবন", "ব্রাহ্মণবাড়িয়া"]
 
 ASSOC_PATTERNS = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
                    for kw in ["petrobangla", "barapukuria", "maddhapara", "bcmcl", "mgmcl"]]
