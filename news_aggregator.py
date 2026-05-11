@@ -117,13 +117,13 @@ SOURCES = [
     },
     {
         "name": "Kaler Kantho", 
-        "url": "https://www.kalerkantho.com/rss.xml", 
-        "type": "rss"
+        "url": "https://www.kalerkantho.com/sitemap.xml", 
+        "type": "sitemap"
     },
     {
-        "name": "Samakal",
-        "url": "https://samakal.com/feed",
-        "type": "rss"
+        "name": "Samakal", 
+        "url": "https://samakal.com/news_sitemap.xml", 
+        "type": "sitemap"
     },
     {"name": "Desh Rupantor", "url": "https://www.deshrupantor.com/sitemap.xml", "type": "sitemap"},
     {"name": "Jugantor", "url": "https://www.jugantor.com/", "type": "html"},
@@ -523,8 +523,8 @@ def track_source(name, success, count=0):
     else:
         stats["fail"] += 1
         stats["last_fail_streak"] = stats.get("last_fail_streak", 0) + 1
-        if stats["last_fail_streak"] == 3:
-            send_telegram_retry(f"⚠️ Source Monitoring Alert: I haven't been able to reach '{name}' for the last 3 attempts. It may need a layout update.")
+        if stats["last_fail_streak"] == 5:
+            send_telegram_retry(f"⚠️ Source Monitoring Alert: I haven't been able to reach '{name}' for the last 5 attempts from the cloud server. I will keep retrying.")
     stats["last_check"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # --- STORAGE ---
@@ -651,9 +651,9 @@ try:
     )
     # Add persistent human headers
     scraper.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Language': 'en-US,en;q=0.9,bn;q=0.8',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
         'Referer': 'https://www.google.com/',
