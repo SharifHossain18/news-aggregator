@@ -1597,15 +1597,15 @@ def scrape_all(ignore_sent_history=False):
 
     # 2. Handle Daily Digest
     if should_send_daily_digest:
-        if all_new:
+        if web_news:
             header = f"☀️ <b>Daily News Digest — {now_bd.strftime('%d %b %Y')}</b>\n"
-            header += f"Found {len(all_new)} relevant articles.\n" + "="*30 + "\n\n"
+            header += f"Found {len(web_news)} relevant articles.\n" + "="*30 + "\n\n"
             
             # Sort: Priority first
-            all_new.sort(key=lambda x: is_priority_match(x['title']), reverse=True)
+            web_news.sort(key=lambda x: is_priority_match(x['title']), reverse=True)
             
             body = ""
-            for i, art in enumerate(all_new, 1):
+            for i, art in enumerate(web_news, 1):
                 prefix = "🔴 " if is_priority_match(art['title']) else f"{i}. "
                 summary_text = f"\n📝 <i>{html.escape(art.get('summary', ''))}</i>" if art.get('summary') else ""
                 item = f"{prefix}<a href='{html.escape(art['link'])}'>{html.escape(art['title'])}</a>\n📌 {art['source']}{summary_text}\n\n"
@@ -1618,7 +1618,7 @@ def scrape_all(ignore_sent_history=False):
             
             sent_ok = send_telegram_chunked(header + body)
             if sent_ok:
-                log(f"Digest sent to Telegram ({len(all_new)} articles)")
+                log(f"Digest sent to Telegram ({len(web_news)} articles)")
                 save_sent_articles(sent_articles)
                 digest_state["last_digest_date"] = today_bd
                 digest_state["last_digest_sent_at"] = now_bd.strftime("%Y-%m-%d %H:%M:%S")
