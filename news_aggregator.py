@@ -8,6 +8,7 @@ import ssl
 import re
 import html
 import time
+import random
 from email.utils import parsedate_to_datetime
 import sys
 import io
@@ -27,8 +28,6 @@ try:
 except ImportError:
     pass
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 SELF_CHECK_MODE = os.environ.get("SELF_CHECK", "").strip().lower() in ("1", "true", "yes", "on")
 EXTRA_ARTICLE_URLS = [u.strip() for u in os.environ.get("EXTRA_ARTICLE_URLS", "").split(",") if u.strip()]
 STRICT_CORE_ONLY = os.environ.get("STRICT_CORE_ONLY", "false").strip().lower() in ("1", "true", "yes", "on")
@@ -36,10 +35,6 @@ DIGEST_HOUR_BD = int(os.environ.get("DIGEST_HOUR_BD", "7"))
 DIGEST_CATCHUP_HOURS = int(os.environ.get("DIGEST_CATCHUP_HOURS", "5"))
 SCAN_DAYS = int(os.environ.get("SCAN_DAYS", "0"))
 SCAN_SOURCES = [s.strip().lower() for s in os.environ.get("SCAN_SOURCES", "").split(",") if s.strip()]
-if (not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID) and not SELF_CHECK_MODE:
-    print("ERROR: Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env file")
-    print("Create .env with:\nTELEGRAM_BOT_TOKEN=your_token\nTELEGRAM_CHAT_ID=your_chat_id")
-    sys.exit(1)
 
 # --- GEMINI AI SETUP ---
 try:
@@ -436,12 +431,16 @@ def save_bad_sections():
 
 
 def save_to_web(new_articles):
-    """Saves the latest news to a JSON file for the web dashboard."""
-    if not new_articles:
-        return
-    
+    """Saves the latest news to a JSON file for the web dashboard.
+    Only keeps articles from the last 24 hours."""
     # Ensure docs directory exists
     os.makedirs("docs", exist_ok=True)
+    
+    bd_tz = datetime.timezone(datetime.timedelta(hours=6))
+    now_bd = datetime.datetime.now(bd_tz)
+    now_str = now_bd.strftime("%I:%M %p")
+    cutoff = now_bd - datetime.timedelta(hours=24)
+    cutoff_str = cutoff.strftime("%Y-%m-%d")
     
     existing_news = []
     if os.path.exists(WEB_DATA_FILE):
@@ -450,30 +449,32 @@ def save_to_web(new_articles):
                 existing_news = json.load(f)
         except Exception:
             existing_news = []
-            
+    
+    # Remove articles older than 24 hours based on scan_date
+    existing_news = [a for a in existing_news if a.get('scan_date', '') >= cutoff_str]
+    
     # Use link as unique ID
     seen_links = {a['link'] for a in existing_news}
     
     # Add new articles that aren't already in the list
     added_count = 0
-    bd_tz = datetime.timezone(datetime.timedelta(hours=6))
-    now_bd = datetime.datetime.now(bd_tz)
-    now_str = now_bd.strftime("%I:%M %p")
-    for art in new_articles:
+    for art in (new_articles or []):
         if art['link'] not in seen_links:
-            # Add timestamp if not present (default to scan time)
+            # Add timestamp if not present
             if 'time' not in art:
                 art['time'] = f"{now_str} (Scan)"
             else:
-                # If we have a time but no label, it was likely from the source
                 if "(" not in art['time']:
                     art['time'] = f"{art['time']} (Pub)"
+            
+            # Tag with scan date for 24h filtering
+            art['scan_date'] = now_bd.strftime("%Y-%m-%d")
             
             existing_news.insert(0, art)
             seen_links.add(art['link'])
             added_count += 1
             
-    # Keep only latest 50
+    # Keep only latest 50 (all within 24h)
     existing_news = existing_news[:50]
     
     try:
@@ -534,7 +535,7 @@ def track_source(name, success, count=0):
         stats["fail"] += 1
         stats["last_fail_streak"] = stats.get("last_fail_streak", 0) + 1
         if stats["last_fail_streak"] == 5:
-            send_telegram_retry(f"⚠️ Source Monitoring Alert: I haven't been able to reach '{name}' for the last 5 attempts from the cloud server. I will keep retrying.")
+            log(f"Source Monitoring Alert: '{name}' has failed 5 times in a row")
     stats["last_check"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # --- STORAGE ---
@@ -552,94 +553,15 @@ def save_sent_articles(sent_set):
     with open(SENT_LOG_FILE, "w", encoding="utf-8") as f:
         json.dump(list_to_save, f)
 
-# --- TELEGRAM ---
+# --- TELEGRAM (REMOVED — using PWA app instead) ---
+# All notification functions removed. News is delivered via PetroBangla News Hub app.
 def send_telegram(text, parse_mode="HTML"):
-    if SELF_CHECK_MODE:
-        log("[SELF_CHECK] Telegram send skipped")
-        return True
-    text = "".join(ch for ch in text if ch.isprintable() or ch in "\n\r\t")
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    data = {"chat_id": TELEGRAM_CHAT_ID, "text": text, "disable_web_page_preview": True}
-    if parse_mode:
-        data["parse_mode"] = parse_mode
-    payload = json.dumps(data, ensure_ascii=False).encode('utf-8')
-    req = urllib.request.Request(url, payload, headers={'Content-Type': 'application/json'})
-    secure_ctx = ssl.create_default_context()
-    insecure_ctx = ssl._create_unverified_context()
-    try:
-        resp = urllib.request.urlopen(req, timeout=15, context=secure_ctx)
-        result = json.loads(resp.read())
-        if not result.get("ok"):
-            log(f"Telegram error: {result.get('description', 'unknown')}")
-        return result.get("ok", False)
-    except ssl.SSLError as e:
-        log(f"Telegram SSL error, retrying insecurely: {e}")
-        try:
-            resp = urllib.request.urlopen(req, timeout=15, context=insecure_ctx)
-            result = json.loads(resp.read())
-            if not result.get("ok"):
-                log(f"Telegram error: {result.get('description', 'unknown')}")
-            return result.get("ok", False)
-        except Exception as inner:
-            log(f"Telegram send failed after SSL fallback: {inner}")
-            return False
-    except urllib.error.URLError as e:
-        msg = str(e)
-        if "CERTIFICATE_VERIFY_FAILED" in msg or "self-signed certificate" in msg:
-            log(f"Telegram cert verify failed, retrying insecurely: {e}")
-            try:
-                resp = urllib.request.urlopen(req, timeout=15, context=insecure_ctx)
-                result = json.loads(resp.read())
-                if not result.get("ok"):
-                    log(f"Telegram error: {result.get('description', 'unknown')}")
-                return result.get("ok", False)
-            except Exception as inner:
-                log(f"Telegram send failed after cert fallback: {inner}")
-                return False
-        log(f"Telegram send failed: {e}")
-        return False
-    except Exception as e:
-        log(f"Telegram send failed: {e}")
-        return False
+    return True
 
 def send_telegram_retry(text, retries=3):
-    for i in range(retries):
-        if send_telegram(text):
-            return True
-        time.sleep(2)
-    return False
-
-def chunk_telegram_message(text, max_len=3800):
-    if len(text) <= max_len:
-        return [text]
-    chunks = []
-    remaining = text
-    while remaining:
-        if len(remaining) <= max_len:
-            chunks.append(remaining)
-            break
-        split_at = remaining.rfind("\n", 0, max_len)
-        if split_at < 200:
-            split_at = max_len
-        chunks.append(remaining[:split_at])
-        remaining = remaining[split_at:].lstrip("\n")
-    return chunks
+    return True
 
 def send_telegram_chunked(text, parse_mode="HTML", retries=3):
-    chunks = chunk_telegram_message(text)
-    for idx, chunk in enumerate(chunks, 1):
-        ok = False
-        for _ in range(retries):
-            if send_telegram(chunk, parse_mode=parse_mode):
-                ok = True
-                break
-            time.sleep(2)
-        if not ok:
-            log(f"Failed to send Telegram chunk {idx}/{len(chunks)}")
-            return False
-        if len(chunks) > 1:
-            log(f"Telegram chunk {idx}/{len(chunks)} sent")
-            time.sleep(0.4)
     return True
 
 # --- FETCH ---

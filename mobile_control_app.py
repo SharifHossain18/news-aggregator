@@ -147,7 +147,7 @@ def trigger_github_action(mode):
     try:
         urllib.request.urlopen(req)
         append_log(f"Cloud Scraper triggered successfully (Mode: {mode})")
-        return jsonify({"ok": True, "message": "Cloud Scraper Triggered! Check Telegram in 1-2 mins."})
+        return jsonify({"ok": True, "message": "Cloud Scraper Triggered! News will update in 1-2 mins."})
     except Exception as e:
         append_log(f"GitHub Trigger Error: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -553,7 +553,7 @@ MOBILE_HTML = """<!doctype html>
         if (!data.ok) throw new Error(data.error || data.message || 'run failed');
         
         if (currentTab === 'cloud') {
-          alert("Cloud Request Sent! The scraper will run on GitHub and notify you on Telegram.");
+          alert("Cloud Request Sent! The scraper will run on GitHub and update your news feed.");
         }
         
         await refreshStatus();
