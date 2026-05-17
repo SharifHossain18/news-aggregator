@@ -370,7 +370,12 @@ const Search = (() => {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Server error');
+        if (res.status === 409 && err.message && err.message.includes('in progress')) {
+          // Already running, just start polling!
+          App.showToast('A scan is already running. Showing progress...');
+        } else {
+          throw new Error(err.error || err.message || 'Server error');
+        }
       }
 
       // Start polling for results

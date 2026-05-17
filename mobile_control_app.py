@@ -22,6 +22,18 @@ GITHUB_WORKFLOW = "scrape.yml"
 
 app = Flask(__name__)
 
+@app.before_request
+def handle_options():
+    if request.method == 'OPTIONS':
+        return Response(status=204)
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-App-Token'
+    return response
+
 process_lock = threading.Lock()
 active_process = None
 run_logs = deque(maxlen=2000)
