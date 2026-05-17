@@ -1,276 +1,276 @@
 {
   "Samakal": {
-    "success": 18,
+    "success": 19,
     "fail": 6,
-    "articles": 17,
-    "last_check": "2026-05-17 15:15:56",
+    "articles": 20,
+    "last_check": "2026-05-17 15:19:05",
     "last_fail_streak": 0
   },
   "Dhaka Tribune": {
-    "success": 18,
+    "success": 19,
     "fail": 6,
-    "articles": 7,
-    "last_check": "2026-05-17 15:15:53",
+    "articles": 8,
+    "last_check": "2026-05-17 15:19:00",
     "last_fail_streak": 0
   },
   "Jugantor": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 0,
-    "last_check": "2026-05-17 15:15:59",
+    "last_check": "2026-05-17 15:19:05",
     "last_fail_streak": 0
   },
   "Desh Rupantor": {
-    "success": 17,
+    "success": 18,
     "fail": 6,
     "articles": 10,
-    "last_check": "2026-05-17 15:15:49",
+    "last_check": "2026-05-17 15:18:57",
     "last_fail_streak": 0
   },
   "TBS News": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 31,
-    "last_check": "2026-05-17 15:16:04",
+    "last_check": "2026-05-17 15:19:04",
     "last_fail_streak": 0
   },
   "Daily Star": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 40,
-    "last_check": "2026-05-17 15:16:00",
+    "articles": 41,
+    "last_check": "2026-05-17 15:19:04",
     "last_fail_streak": 0
   },
   "Prothom Alo": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 4,
-    "last_check": "2026-05-17 15:15:59",
+    "articles": 6,
+    "last_check": "2026-05-17 15:19:08",
     "last_fail_streak": 0
   },
   "Kaler Kantho": {
-    "success": 17,
+    "success": 18,
     "fail": 6,
     "articles": 0,
-    "last_check": "2026-05-17 15:15:49",
+    "last_check": "2026-05-17 15:18:57",
     "last_fail_streak": 0
   },
   "Bangla Tribune": {
-    "success": 17,
+    "success": 18,
     "fail": 6,
-    "articles": 13,
-    "last_check": "2026-05-17 15:15:57",
+    "articles": 16,
+    "last_check": "2026-05-17 15:19:07",
     "last_fail_streak": 0
   },
   "Alokito Bangladesh": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 0,
-    "last_check": "2026-05-17 15:16:10",
+    "last_check": "2026-05-17 15:19:16",
     "last_fail_streak": 0
   },
   "Ittefaq": {
-    "success": 18,
+    "success": 19,
     "fail": 6,
-    "articles": 9,
-    "last_check": "2026-05-17 15:16:01",
+    "articles": 12,
+    "last_check": "2026-05-17 15:19:10",
     "last_fail_streak": 0
   },
   "Just Energy News": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 18,
-    "last_check": "2026-05-17 15:16:00",
+    "articles": 20,
+    "last_check": "2026-05-17 15:19:08",
     "last_fail_streak": 0
   },
   "Sangbad": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 54,
-    "last_check": "2026-05-17 15:16:17",
+    "articles": 67,
+    "last_check": "2026-05-17 15:19:25",
     "last_fail_streak": 0
   },
   "Jago News": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 9,
-    "last_check": "2026-05-17 15:15:57",
+    "last_check": "2026-05-17 15:22:23",
     "last_fail_streak": 0
   },
   "Bonik Barta": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 0,
-    "last_check": "2026-05-17 15:16:13",
+    "last_check": "2026-05-17 15:19:25",
     "last_fail_streak": 0
   },
   "Kalbela": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 1,
-    "last_check": "2026-05-17 15:16:16",
+    "last_check": "2026-05-17 15:19:24",
     "last_fail_streak": 0
   },
   "Daily Amardesh": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 18,
-    "last_check": "2026-05-17 15:16:05",
+    "last_check": "2026-05-17 15:19:10",
     "last_fail_streak": 0
   },
   "Jai Jai Din": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 0,
-    "last_check": "2026-05-17 15:16:33",
+    "last_check": "2026-05-17 15:19:38",
     "last_fail_streak": 0
   },
   "Protidiner Bangladesh": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 0,
-    "last_check": "2026-05-17 15:16:19",
+    "last_check": "2026-05-17 15:19:29",
     "last_fail_streak": 0
   },
   "Protidiner Sangbad": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 100,
-    "last_check": "2026-05-17 15:16:41",
+    "articles": 115,
+    "last_check": "2026-05-17 15:19:46",
     "last_fail_streak": 0
   },
   "Shomoyer Alo": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 0,
-    "last_check": "2026-05-17 15:15:52",
+    "last_check": "2026-05-17 15:18:59",
     "last_fail_streak": 0
   },
   "Amader Shomoy": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 13,
-    "last_check": "2026-05-17 15:16:04",
+    "articles": 14,
+    "last_check": "2026-05-17 15:19:11",
     "last_fail_streak": 0
   },
   "Ajker Patrika": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 13,
-    "last_check": "2026-05-17 15:16:26",
+    "last_check": "2026-05-17 15:19:35",
     "last_fail_streak": 0
   },
   "Manobkantha": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 3,
-    "last_check": "2026-05-17 15:16:22",
+    "last_check": "2026-05-17 15:19:32",
     "last_fail_streak": 0
   },
   "Rupali Bangladesh": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 20,
-    "last_check": "2026-05-17 15:16:19",
+    "last_check": "2026-05-17 15:19:29",
     "last_fail_streak": 0
   },
   "Dinkal": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 4,
-    "last_check": "2026-05-17 15:16:32",
+    "articles": 5,
+    "last_check": "2026-05-17 15:19:37",
     "last_fail_streak": 0
   },
   "BD Pratidin": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 0,
-    "last_check": "2026-05-17 15:16:34",
+    "last_check": "2026-05-17 15:19:41",
     "last_fail_streak": 0
   },
   "Daily Inqilab": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 31,
-    "last_check": "2026-05-17 15:16:37",
+    "last_check": "2026-05-17 15:19:38",
     "last_fail_streak": 0
   },
   "Manab Zamin": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 0,
-    "last_check": "2026-05-17 15:16:26",
+    "last_check": "2026-05-17 15:19:36",
     "last_fail_streak": 0
   },
   "Bangladesh Today": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 0,
-    "last_check": "2026-05-17 15:16:28",
+    "last_check": "2026-05-17 15:19:37",
     "last_fail_streak": 0
   },
   "Naya Diganta": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 36,
-    "last_check": "2026-05-17 15:16:20",
+    "articles": 37,
+    "last_check": "2026-05-17 15:19:24",
     "last_fail_streak": 0
   },
   "Daily Post": {
-    "success": 21,
+    "success": 22,
     "fail": 2,
-    "articles": 16,
-    "last_check": "2026-05-17 15:16:59",
+    "articles": 20,
+    "last_check": "2026-05-17 15:19:45",
     "last_fail_streak": 0
   },
   "Daily Sun News Sitemap": {
     "success": 14,
-    "fail": 9,
+    "fail": 10,
     "articles": 2,
-    "last_check": "2026-05-17 15:16:44",
-    "last_fail_streak": 8
+    "last_check": "2026-05-17 15:19:51",
+    "last_fail_streak": 9
   },
   "New Nation": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 7,
-    "last_check": "2026-05-17 15:16:42",
+    "last_check": "2026-05-17 15:19:52",
     "last_fail_streak": 0
   },
   "Financial Express (Sitemap)": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 21,
-    "last_check": "2026-05-17 15:16:44",
+    "articles": 22,
+    "last_check": "2026-05-17 15:19:52",
     "last_fail_streak": 0
   },
   "Financial Express Search": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 15,
-    "last_check": "2026-05-17 15:16:48",
+    "articles": 16,
+    "last_check": "2026-05-17 15:19:54",
     "last_fail_streak": 0
   },
   "Financial Express Today": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 19,
-    "last_check": "2026-05-17 15:16:46",
+    "articles": 20,
+    "last_check": "2026-05-17 15:19:53",
     "last_fail_streak": 0
   },
   "Daily Sun": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 0,
-    "last_check": "2026-05-17 15:16:45",
+    "last_check": "2026-05-17 15:19:50",
     "last_fail_streak": 0
   },
   "Dainik Bangla": {
     "success": 14,
-    "fail": 9,
+    "fail": 10,
     "articles": 14,
-    "last_check": "2026-05-17 15:16:55",
-    "last_fail_streak": 8
+    "last_check": "2026-05-17 15:20:00",
+    "last_fail_streak": 9
   },
   "Daily Star Bangla": {
     "success": 3,
@@ -287,24 +287,24 @@
     "last_fail_streak": 0
   },
   "Observer": {
-    "success": 17,
+    "success": 18,
     "fail": 6,
     "articles": 8,
-    "last_check": "2026-05-17 15:16:33",
+    "last_check": "2026-05-17 15:19:39",
     "last_fail_streak": 0
   },
   "New Age": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
     "articles": 18,
-    "last_check": "2026-05-17 15:16:36",
+    "last_check": "2026-05-17 15:19:43",
     "last_fail_streak": 0
   },
   "Daily Sangram": {
-    "success": 22,
+    "success": 23,
     "fail": 1,
-    "articles": 4,
-    "last_check": "2026-05-17 15:16:29",
+    "articles": 8,
+    "last_check": "2026-05-17 15:19:20",
     "last_fail_streak": 0
   },
   "Janakantha": {
@@ -322,17 +322,17 @@
     "failed_sources": 3
   },
   "Google News (Backup)": {
-    "success": 8,
+    "success": 9,
     "fail": 0,
-    "articles": 20,
-    "last_check": "2026-05-17 15:16:00",
+    "articles": 25,
+    "last_check": "2026-05-17 15:19:08",
     "last_fail_streak": 0
   },
   "Google News BN (Backup)": {
     "success": 0,
-    "fail": 8,
+    "fail": 9,
     "articles": 0,
-    "last_check": "2026-05-17 15:16:09",
-    "last_fail_streak": 8
+    "last_check": "2026-05-17 15:19:17",
+    "last_fail_streak": 9
   }
 }
