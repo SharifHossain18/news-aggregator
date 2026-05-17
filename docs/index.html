@@ -1,339 +1,355 @@
-<!doctype html>
-<html lang='en'>
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset='utf-8'/>
-  <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'/>
-  <title>News Aggregator Pro v2.2 (Interactive Cloud)</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#10b981">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <style>
-    :root { --bg: #030712; --card: rgba(17, 24, 39, 0.8); --primary: #10b981; --accent: #f59e0b; --ink: #f9fafb; --muted: #6b7280; }
-    body { margin: 0; font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
-    .wrap { max-width: 500px; margin: 0 auto; padding: 20px 16px; }
-    .header { text-align: center; padding: 20px 0; }
-    .header h1 { margin: 0; font-size: 24px; color: var(--primary); }
-    .header p { margin: 5px 0 0; font-size: 12px; color: var(--muted); }
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#030b0f"/>
+  <meta name="description" content="Bangladesh Energy Sector Intelligence — Search 40+ newspapers for gas, LNG, coal, rock & Petrobangla news"/>
 
-    .tabs { display: flex; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 4px; margin-bottom: 20px; }
-    .tab { flex: 1; text-align: center; padding: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 8px; color: var(--muted); }
-    .tab.active { background: var(--primary); color: white; }
+  <title>PetroBangla News Hub</title>
 
-    .card { background: var(--card); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 20px; margin-bottom: 20px; }
-    .section-title { font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; margin-bottom: 15px; }
-
-    .news-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 15px 0; }
-    .news-item:last-child { border: none; }
-    .news-title { font-size: 15px; font-weight: 600; color: white; text-decoration: none; display: block; margin-bottom: 5px; line-height: 1.4; }
-    .news-meta { font-size: 11px; color: var(--muted); }
-    .ai-summary { font-size: 13px; color: #a7f3d0; font-style: italic; margin-top: 8px; line-height: 1.5; }
-
-    .btn-primary { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 16px; width: 100%; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 10px; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--ink); padding: 12px; border-radius: 12px; width: 100%; cursor: pointer; margin-top: 10px; }
-    
-    .status-badge { display: inline-flex; align-items: center; background: rgba(16, 185, 129, 0.1); padding: 4px 10px; border-radius: 20px; color: var(--primary); font-size: 10px; font-weight: 700; }
-    
-    input[type="text"], input[type="password"], select { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; font-family: inherit; box-sizing: border-box; }
-    label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 5px; }
-
-    /* Custom Dropdown */
-    .ms-container { position: relative; }
-    .ms-btn { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; cursor: pointer; display: flex; justify-content: space-between; font-size: 14px; }
-    .ms-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #111827; border: 1px solid var(--primary); border-radius: 0 0 16px 16px; display: none; z-index: 100; max-height: 250px; overflow-y: auto; padding: 10px; }
-    .ms-item { display: flex; align-items: center; padding: 10px; font-size: 13px; cursor: pointer; }
-    .ms-item:hover { background: rgba(255,255,255,0.05); }
-
-    .toggle-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #374151; transition: .4s; border-radius: 20px; }
-    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
-    input:checked + .slider { background-color: var(--primary); }
-    input:checked + .slider:before { transform: translateX(20px); }
-
-    .scan-info { background: rgba(16, 185, 129, 0.05); border: 1px dashed rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-    .scanning-active { border-color: #3b82f6 !important; background: rgba(59, 130, 246, 0.1) !important; animation: pulse 2s infinite; }
-    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-    .scan-info-left { display: flex; flex-direction: column; }
-    .scan-info-label { font-size: 10px; color: var(--muted); text-transform: uppercase; }
-    .scan-info-val { font-size: 13px; font-weight: 700; color: var(--primary); }
-  </style>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icons/icon-512.png"/>
+  <link rel="icon" type="image/png" href="icons/icon-512.png"/>
+  <link rel="stylesheet" href="css/app.css"/>
 </head>
 <body>
-  <div class="wrap">
-    <div class="header">
-      <h1>Aggregator Pro v2.2</h1>
-      <p>Interactive Cloud Hub</p>
-    </div>
+  <div id="app">
+    <!-- Offline Banner -->
+    <div id="offlineBanner" class="offline-banner">⚡ You're offline — showing cached news</div>
 
-    <div class="tabs">
-      <div id="tabNews" class="tab active" onclick="showTab('news')">News Hub</div>
-      <div id="tabSettings" class="tab" onclick="showTab('settings')">Configurations</div>
-    </div>
-
-    <div id="viewNews">
-      <div class="card">
-        <div class="section-title">
-          <span>Latest Intelligence</span>
-          <button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;" onclick="loadNews()">Refresh ↻</button>
-        </div>
-        <div id="scanStats" class="scan-info" style="display:none">
-          <div class="scan-info-left" id="scanLabelBox">
-            <span class="scan-info-label" id="scanLabel">Last Duration</span>
-            <span id="scanDuration" class="scan-info-val">--</span>
-          </div>
-          <div class="scan-info-left" style="align-items:flex-end">
-            <span class="scan-info-label">Source Health</span>
-            <span id="scanHealth" class="scan-info-val">--</span>
-          </div>
-        </div>
-        <div id="newsList">Loading news feed...</div>
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <img src="icons/icon-512.png" alt="Logo" class="logo-icon"/>
+        <span class="logo-text">PetroBangla News</span>
       </div>
-    </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="themeToggle" onclick="App.toggleTheme()" title="Toggle theme">🌙</button>
+        <button class="icon-btn" id="refreshBtn" onclick="App.refresh()" title="Refresh">↻</button>
+      </div>
+    </header>
 
-    <div id="viewSettings" style="display:none">
-      <div class="card">
-        <div class="section-title">GitHub API Settings</div>
-        <div style="margin-bottom: 15px;">
-          <label>GITHUB FINE-GRAINED TOKEN</label>
-          <input type="password" id="ghToken" placeholder="github_pat_..." onchange="saveToken()">
-          <div style="font-size: 10px; color: var(--muted); margin-top: 4px;">Needed to trigger scans directly from here.</div>
+    <!-- Main Content -->
+    <main class="app-content">
+      <!-- Pull Indicator -->
+      <div id="pullIndicator" class="pull-indicator">↻ Release to refresh</div>
+
+      <!-- === HOME TAB === -->
+      <div id="viewHome" class="tab-view active">
+        <!-- Scan Status -->
+        <div id="scanStatus" class="scan-status" style="display:none">
+          <div>
+            <div class="scan-label">Last Scan</div>
+            <div class="scan-value" id="scanDuration">--</div>
+          </div>
+          <div style="text-align:right">
+            <div class="scan-label">Source Health</div>
+            <div class="scan-value" id="scanHealth">--</div>
+          </div>
+        </div>
+
+        <!-- Quick Scan Button -->
+        <div class="card scan-card" id="homeScanCard">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div>
+              <div style="font-size:15px;font-weight:700">📡 Scan Newspapers</div>
+              <div style="font-size:11px;color:var(--ink-muted);margin-top:2px">Search all 42 sources for latest news</div>
+            </div>
+            <div id="homeScanStatus" style="font-size:10px;padding:4px 10px;border-radius:20px;background:var(--bg-glass);color:var(--ink-muted);border:1px solid var(--border)">IDLE</div>
+          </div>
+          <button class="btn btn-primary" id="homeScanBtn" onclick="App.quickScan()" style="margin-bottom:0">
+            🚀 Scan Now
+          </button>
+          <!-- Home Progress Bar -->
+          <div id="homeProgress" class="progress-wrapper" style="display:none">
+            <div class="progress-header">
+              <span class="progress-label" id="homeProgressLabel">Scanning...</span>
+              <span class="progress-percent" id="homeProgressPct">0%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="homeProgressFill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Breaking News -->
+        <div id="breakingNews" style="display:none"></div>
+
+        <!-- Filter Chips -->
+        <div class="filter-chips" id="filterChips">
+          <button class="chip active" data-filter="all" onclick="News.filter('all')">All News</button>
+          <button class="chip" data-filter="gas" onclick="News.filter('gas')">⛽ Gas</button>
+          <button class="chip" data-filter="lng" onclick="News.filter('lng')">🚢 LNG</button>
+          <button class="chip" data-filter="coal" onclick="News.filter('coal')">⚫ Coal</button>
+          <button class="chip" data-filter="rock" onclick="News.filter('rock')">🪨 Rock</button>
+          <button class="chip" data-filter="petrobangla" onclick="News.filter('petrobangla')">🏢 Petrobangla</button>
+          <button class="chip" data-filter="titas" onclick="News.filter('titas')">🔥 Titas</button>
+          <button class="chip" data-filter="bapex" onclick="News.filter('bapex')">🛢️ BAPEX</button>
+        </div>
+
+        <!-- News Feed -->
+        <div class="card">
+          <div class="section-title">
+            <span>Latest Intelligence</span>
+            <span id="newsCount" style="font-size:11px; color:var(--primary-light)">--</span>
+          </div>
+          <div id="newsList">
+            <!-- Loading Skeletons -->
+            <div class="news-item"><div class="news-body"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-badge"></div></div></div>
+            <div class="news-item"><div class="news-body"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-badge"></div></div></div>
+            <div class="news-item"><div class="news-body"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-badge"></div></div></div>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="section-title">Remote Scraper Control</div>
-        
-        <div class="toggle-container">
-          <span style="font-size: 14px;">Gemini AI Intelligence</span>
-          <label class="switch"><input type="checkbox" id="aiToggle" checked><span class="slider"></span></label>
+      <!-- === SEARCH TAB === -->
+      <div id="viewSearch" class="tab-view">
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Search gas, LNG, coal, Petrobangla..." oninput="Search.onInput(this.value)"/>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-          <div>
-            <label>TIME RANGE</label>
-            <select id="days">
-              <option value="1">1 Day</option>
-              <option value="2">2 Days</option>
-              <option value="3">3 Days</option>
-            </select>
+        <!-- Recent Searches -->
+        <div id="recentSearches" class="card" style="display:none">
+          <div class="section-title"><span>Recent Searches</span><button class="refresh-btn" onclick="Search.clearHistory()">Clear</button></div>
+          <div id="recentList"></div>
+        </div>
+
+        <!-- Search Results -->
+        <div id="searchResults"></div>
+      </div>
+
+      <!-- === SOURCES TAB === -->
+      <div id="viewSources" class="tab-view">
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="sourceSearch" placeholder="Search sources..." oninput="Sources.filter(this.value)"/>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <span>Newspaper Sources</span>
+            <span id="sourceCount" style="font-size:11px; color:var(--primary-light)">--</span>
           </div>
-          <div>
-            <label>SOURCE FILTER</label>
-            <div class="ms-container">
-              <div id="msBtn" class="ms-btn" onclick="toggleDrop()">
-                <span id="msVal">All Sources</span><span>▼</span>
+          <div id="sourceList">
+            <div class="empty-state"><div class="icon">📡</div><div class="title">Loading Sources...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- === SCAN TAB === -->
+      <div id="viewScan" class="tab-view">
+        <!-- Scan Mode Selector -->
+        <div class="card">
+          <div class="section-title"><span>Scan Mode</span></div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <button class="chip active" id="modeCloud" onclick="App.setScanMode('cloud')" style="flex:1;text-align:center;padding:10px">☁️ Cloud</button>
+            <button class="chip" id="modeLocal" onclick="App.setScanMode('local')" style="flex:1;text-align:center;padding:10px">💻 Local Server</button>
+          </div>
+
+          <!-- Cloud Config -->
+          <div id="cloudConfig">
+            <div style="margin-bottom:12px">
+              <div class="setting-label" style="margin-bottom:4px;font-size:11px;color:var(--ink-muted)">GitHub Token</div>
+              <input type="password" id="scanGhToken" placeholder="github_pat_..." style="width:100%;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--ink);font-size:13px" onchange="App.saveToken()"/>
+              <div style="font-size:10px;color:var(--ink-muted);margin-top:4px">Required for cloud scanning via GitHub Actions</div>
+            </div>
+          </div>
+
+          <!-- Local Config -->
+          <div id="localConfig" style="display:none">
+            <div style="margin-bottom:12px">
+              <div class="setting-label" style="margin-bottom:4px;font-size:11px;color:var(--ink-muted)">Local Server URL</div>
+              <input type="text" id="localServerUrl" placeholder="http://192.168.1.100:5055" style="width:100%;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--ink);font-size:13px" onchange="App.saveLocalUrl()"/>
+              <div style="font-size:10px;color:var(--ink-muted);margin-top:4px">Your PC's IP running mobile_control_app.py</div>
+            </div>
+            <div style="margin-bottom:12px">
+              <div class="setting-label" style="margin-bottom:4px;font-size:11px;color:var(--ink-muted)">App Token (optional)</div>
+              <input type="password" id="localAppToken" placeholder="X-App-Token" style="width:100%;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--ink);font-size:13px" onchange="App.saveLocalToken()"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scan Actions -->
+        <div class="card">
+          <div class="section-title"><span>Quick Actions</span><span id="scanModeLabel" style="font-size:10px;padding:3px 8px;border-radius:20px;background:rgba(99,102,241,0.15);color:#818cf8">☁️ CLOUD</span></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn btn-primary" id="scanTriggerBtn" onclick="App.triggerScan('trigger')" style="font-size:16px;padding:18px">
+              🚀 Scan All 42 Newspapers
+            </button>
+            <button class="btn btn-outline" onclick="App.triggerScan('digest')">
+              📋 Run Daily Digest
+            </button>
+            <button class="btn btn-outline" onclick="App.triggerScan('stats')">
+              📊 Send Analytics Report
+            </button>
+          </div>
+        </div>
+
+        <!-- Scan Status & Progress -->
+        <div class="card">
+          <div class="section-title"><span>Scan Progress</span></div>
+          <div id="scanProgressBox">
+            <div style="display:flex;align-items:center;gap:10px;padding:12px 0">
+              <div id="scanProgressDot" style="width:10px;height:10px;border-radius:50%;background:var(--ink-muted);flex-shrink:0"></div>
+              <div>
+                <div id="scanProgressText" style="font-size:14px;font-weight:500">No scan running</div>
+                <div id="scanProgressSub" style="font-size:11px;color:var(--ink-muted)">Tap the button above to start scanning</div>
               </div>
-              <div id="msDrop" class="ms-dropdown">
-                <input type="text" placeholder="Search..." onkeyup="filterSources(this.value)" style="margin-bottom:10px;">
-                <div id="msList">Loading...</div>
+            </div>
+            <!-- Full Progress Bar -->
+            <div id="scanProgress" class="progress-wrapper" style="display:none">
+              <div class="progress-header">
+                <span class="progress-label" id="scanProgressLabel">Initializing...</span>
+                <span class="progress-percent" id="scanProgressPct">0%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" id="scanProgressFill"></div>
+              </div>
+              <div class="progress-stages">
+                <div class="progress-stage">
+                  <div class="stage-dot" id="stage0"></div>
+                  <span class="stage-label" id="stageLabel0">Connect</span>
+                </div>
+                <div class="progress-stage">
+                  <div class="stage-dot" id="stage1"></div>
+                  <span class="stage-label" id="stageLabel1">Scan</span>
+                </div>
+                <div class="progress-stage">
+                  <div class="stage-dot" id="stage2"></div>
+                  <span class="stage-label" id="stageLabel2">Filter</span>
+                </div>
+                <div class="progress-stage">
+                  <div class="stage-dot" id="stage3"></div>
+                  <span class="stage-label" id="stageLabel3">Complete</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <button id="triggerBtn" class="btn-primary" onclick="triggerScan('trigger')">🚀 Start Cloud Scan</button>
-        <button id="digestBtn" class="btn-outline" onclick="triggerScan('digest')">📋 Run Daily Digest</button>
+        <!-- Stats Summary -->
+        <div class="stat-grid" id="statGrid">
+          <div class="stat-card"><div class="stat-value" id="totalArticles">--</div><div class="stat-label">Articles</div></div>
+          <div class="stat-card"><div class="stat-value" id="totalSources">--</div><div class="stat-label">Sources</div></div>
+          <div class="stat-card"><div class="stat-value" id="healthyCount">--</div><div class="stat-label">Healthy</div></div>
+          <div class="stat-card"><div class="stat-value" id="failedCount">--</div><div class="stat-label">Failed</div></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><span>Top Sources by Articles</span></div>
+          <div id="sourceChart" class="chart-bar-container"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><span>Topic Distribution</span></div>
+          <div id="topicChart" class="chart-bar-container"></div>
+        </div>
       </div>
-    </div>
+
+      <!-- === SETTINGS TAB === -->
+      <div id="viewSettings" class="tab-view">
+        <div class="card">
+          <div class="section-title"><span>App Settings</span></div>
+
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Dark Mode</div>
+              <div class="setting-desc">Premium dark theme</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="darkModeToggle" checked onchange="App.toggleTheme()"/>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Auto Refresh</div>
+              <div class="setting-desc">Refresh every 5 minutes</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="autoRefreshToggle" checked onchange="App.toggleAutoRefresh()"/>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Show AI Summaries</div>
+              <div class="setting-desc">Display AI-generated summaries</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="aiSummaryToggle" checked onchange="App.toggleAISummary()"/>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><span>Remote Scan Control</span></div>
+          <div style="margin-bottom:14px">
+            <div class="setting-label" style="margin-bottom:6px">GitHub Token</div>
+            <input type="password" id="ghToken" placeholder="github_pat_..." style="width:100%;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--ink);font-size:13px" onchange="App.saveToken()"/>
+          </div>
+          <button class="btn btn-primary" onclick="App.triggerScan('trigger')" id="scanBtn">🚀 Start Cloud Scan</button>
+          <div style="height:10px"></div>
+          <button class="btn btn-outline" onclick="App.triggerScan('digest')">📋 Run Daily Digest</button>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><span>Data Sources</span></div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">News Data URL</div>
+              <div class="setting-desc">Where to fetch news from</div>
+            </div>
+          </div>
+          <input type="text" id="dataUrl" placeholder="https://user.github.io/news-aggregator/news_data.json" style="width:100%;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--ink);font-size:12px;margin-top:8px" onchange="App.saveDataUrl()"/>
+        </div>
+
+        <div class="card" style="text-align:center">
+          <div style="font-size:13px;color:var(--ink-muted)">PetroBangla News Hub v1.0</div>
+          <div style="font-size:11px;color:var(--ink-muted);margin-top:4px">Bangladesh Energy Sector Intelligence</div>
+          <div style="font-size:11px;color:var(--ink-muted);margin-top:2px">Scanning 42+ newspaper sources</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="Home" onclick="App.switchTab('Home')">
+        <span class="nav-icon">🏠</span>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" data-tab="Search" onclick="App.switchTab('Search')">
+        <span class="nav-icon">🔍</span>
+        <span>Search</span>
+      </button>
+      <button class="nav-item" data-tab="Sources" onclick="App.switchTab('Sources')">
+        <span class="nav-icon">📰</span>
+        <span>Sources</span>
+      </button>
+      <button class="nav-item" data-tab="Scan" onclick="App.switchTab('Scan')">
+        <span class="nav-icon">📡</span>
+        <span>Scan</span>
+      </button>
+      <button class="nav-item" data-tab="Settings" onclick="App.switchTab('Settings')">
+        <span class="nav-icon">⚙️</span>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
   </div>
 
-  <script>
-    let selectedSources = [];
-    let allSourceNames = [];
-
-    // Load Token
-    const savedToken = localStorage.getItem('gh_pat_token');
-    if(savedToken) document.getElementById('ghToken').value = savedToken;
-
-    function saveToken() {
-      localStorage.setItem('gh_pat_token', document.getElementById('ghToken').value);
-    }
-
-    async function loadNews() {
-      const list = document.getElementById('newsList');
-      const statsDiv = document.getElementById('scanStats');
-      try {
-        // Load news
-        const nRes = await fetch('./news_data.json?t=' + Date.now());
-        const data = await nRes.json();
-        
-        // Load meta stats
-        const sRes = await fetch('./source_stats.json?t=' + Date.now());
-        const stats = await sRes.json();
-        const meta = stats._meta;
-
-        if (meta) {
-          statsDiv.style.display = 'flex';
-          document.getElementById('scanDuration').textContent = meta.duration || '--';
-          document.getElementById('scanHealth').textContent = `${meta.successful_sources || 0} OK / ${meta.failed_sources || 0} Fail`;
-        }
-
-        if (!data || data.length === 0) {
-          list.innerHTML = "<div style='text-align:center; padding:20px; color:var(--muted)'>No news found. Trigger a scan!</div>";
-          return;
-        }
-
-        list.innerHTML = data.map((n, i) => `
-          <div class="news-item">
-            <div style="display:flex; align-items: flex-start; gap: 10px;">
-              <span style="font-size: 14px; font-weight: 700; color: var(--muted); margin-top: 3px;">${i + 1}.</span>
-              <div style="flex:1">
-                <a href="${n.link}" class="news-title" target="_blank">${n.title}</a>
-                <div class="news-meta">
-                  <span class="status-badge">${n.source}</span>
-                  <span style="margin-left:8px">🕒 ${n.time || 'Today'}</span>
-                </div>
-                ${n.summary ? `<div class="ai-summary">📝 ${n.summary}</div>` : ''}
-              </div>
-            </div>
-          </div>
-        `).join('');
-      } catch (e) {
-        list.innerHTML = "<div style='color:#ef4444; padding:20px; text-align:center;'>Feed error. Ensure GitHub Action is running.</div>";
-      }
-    }
-
-    async function loadSources() {
-      try {
-        const response = await fetch('./source_stats.json?t=' + Date.now());
-        const stats = await response.json();
-        allSourceNames = Object.keys(stats).sort();
-        renderSources();
-      } catch (e) {
-        document.getElementById('msList').innerHTML = "Could not load sources.";
-      }
-    }
-
-    function renderSources() {
-      document.getElementById('msList').innerHTML = allSourceNames.map(name => `
-        <div class="ms-item" onclick="toggleSel('${name}')">
-          <input type="checkbox" id="chk_${name.replace(/\s+/g, '')}" ${selectedSources.includes(name)?'checked':''} onclick="event.stopPropagation(); toggleSel('${name}')">
-          <span style="margin-left:8px">${name}</span>
-        </div>
-      `).join('');
-    }
-
-    function toggleDrop() {
-      const d = document.getElementById('msDrop');
-      d.style.display = d.style.display==='block'?'none':'block';
-    }
-
-    function toggleSel(name) {
-      const i = selectedSources.indexOf(name);
-      if (i===-1) selectedSources.push(name); else selectedSources.splice(i, 1);
-      document.getElementById('chk_'+name.replace(/\s+/g, '')).checked = selectedSources.includes(name);
-      document.getElementById('msVal').textContent = selectedSources.length===0 ? "All Sources" : selectedSources.length + " Selected";
-    }
-
-    function filterSources(q) {
-      document.querySelectorAll('.ms-item').forEach(i => {
-        i.style.display = i.textContent.toLowerCase().includes(q.toLowerCase()) ? 'flex' : 'none';
-      });
-    }
-
-    function showTab(t) {
-      document.getElementById('viewNews').style.display = t==='news'?'block':'none';
-      document.getElementById('viewSettings').style.display = t==='settings'?'block':'none';
-      document.getElementById('tabNews').classList.toggle('active', t==='news');
-      document.getElementById('tabSettings').classList.toggle('active', t==='settings');
-    }
-
-    async function triggerScan(mode) {
-      const token = document.getElementById('ghToken').value;
-      if (!token) { alert("Please enter your GitHub Token first."); return; }
-
-      const btn = mode === 'trigger' ? document.getElementById('triggerBtn') : document.getElementById('digestBtn');
-      const oldText = btn.textContent;
-      btn.textContent = "⏳ Starting...";
-      btn.disabled = true;
-
-      const days = document.getElementById('days').value;
-      const no_ai = !document.getElementById('aiToggle').checked;
-      const sourcesStr = selectedSources.join(',');
-
-      try {
-        // Replace 'user/repo' if this forks, hardcoded for now
-        const repo = "SharifHossain18/news-aggregator";
-        const url = `https://api.github.com/repos/${repo}/actions/workflows/scrape.yml/dispatches`;
-        
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + token,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            ref: 'main',
-            inputs: {
-              mode: mode,
-              days: days,
-              sources: sourcesStr,
-              no_ai: no_ai ? 'true' : 'false'
-            }
-          })
-        });
-
-        if (res.ok) {
-          btn.textContent = "🚀 Scan Started!";
-          btn.style.background = "#10b981";
-          
-          // Show scanning status in the banner
-          const statsDiv = document.getElementById('scanStats');
-          const scanLabel = document.getElementById('scanLabel');
-          statsDiv.style.display = 'flex';
-          statsDiv.classList.add('scanning-active');
-          scanLabel.textContent = "🚀 SCANNING...";
-          
-          setTimeout(() => {
-            btn.textContent = oldText;
-            btn.disabled = false;
-            btn.style.background = "";
-            // Keep the banner "Scanning" for 3 minutes or until next refresh
-            setTimeout(() => {
-                statsDiv.classList.remove('scanning-active');
-                scanLabel.textContent = "Last Duration";
-            }, 3 * 60 * 1000);
-          }, 5000);
-        } else {
-          const err = await res.json();
-          alert("❌ Error: " + (err.message || "Unauthorized. Check your token."));
-        }
-      } catch(e) {
-        alert("Network error.");
-      }
-      
-      btn.textContent = oldText;
-      btn.disabled = false;
-    }
-
-    window.onclick = (e) => {
-      if (!e.target.closest('.ms-container')) {
-        document.getElementById('msDrop').style.display = 'none';
-      }
-    };
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then(reg => {
-          console.log('SW Registered!', reg);
-        }).catch(err => {
-          console.log('SW Registration Failed!', err);
-        });
-      });
-    }
-
-    loadNews();
-    loadSources();
-
-    // Auto-refresh every 5 minutes
-    setInterval(() => {
-      console.log("Auto-refreshing news feed...");
-      loadNews();
-    }, 5 * 60 * 1000);
-  </script>
+  <script src="js/news.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
