@@ -4,6 +4,22 @@ const App = (() => {
   let statsData = {};
   let scanMode = 'cloud'; // 'cloud' or 'local'
   let localPollTimer = null;
+  let deferredInstallPrompt = null;
+
+  // Capture PWA install prompt
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    const banner = document.getElementById('installBanner');
+    if (banner) banner.style.display = 'block';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    const banner = document.getElementById('installBanner');
+    if (banner) banner.style.display = 'none';
+    showToast('✅ App installed!');
+  });
 
   // --- Initialize ---
   async function init() {
@@ -646,10 +662,25 @@ const App = (() => {
     setTimeout(() => toast.classList.remove('show'), 2500);
   }
 
+  async function installApp() {
+    if (!deferredInstallPrompt) {
+      showToast('Open in Chrome browser to install');
+      return;
+    }
+    deferredInstallPrompt.prompt();
+    const result = await deferredInstallPrompt.userChoice;
+    if (result.outcome === 'accepted') {
+      showToast('✅ Installing...');
+    }
+    deferredInstallPrompt = null;
+    const banner = document.getElementById('installBanner');
+    if (banner) banner.style.display = 'none';
+  }
+
   return {
     init, switchTab, toggleTheme, refresh, toggleAutoRefresh,
     toggleAISummary, triggerScan, quickScan, setScanMode,
-    saveToken, saveLocalUrl, saveLocalToken, saveDataUrl, showToast
+    saveToken, saveLocalUrl, saveLocalToken, saveDataUrl, showToast, installApp
   };
 })();
 
