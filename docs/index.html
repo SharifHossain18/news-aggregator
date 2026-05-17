@@ -126,12 +126,12 @@
 
         <!-- Search Mode Toggle -->
         <div style="display:flex;gap:6px;margin:8px 0 12px">
-          <button class="chip active" id="modeLocal" onclick="Search.setMode('local')">📋 My News</button>
-          <button class="chip" id="modeWeb" onclick="Search.setMode('web')">🌐 Web Search</button>
+          <button class="chip" id="modeLocal" onclick="Search.setMode('local')">📋 My News</button>
+          <button class="chip active" id="modeWeb" onclick="Search.setMode('web')">🌐 Web Search</button>
         </div>
 
         <!-- Web Search Hint -->
-        <div id="webSearchHint" style="display:none;padding:8px 12px;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.2);border-radius:12px;margin-bottom:12px;font-size:11px;color:var(--ink-muted)">
+        <div id="webSearchHint" style="padding:8px 12px;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.2);border-radius:12px;margin-bottom:12px;font-size:11px;color:var(--ink-muted)">
           ✨ Search ANY topic — sports, politics, culture, international — across 40+ Bangladeshi newspapers. Press <b>Enter</b> or tap <b>Search Web</b>.
         </div>
 
@@ -145,7 +145,7 @@
         <div id="searchResults"></div>
 
         <!-- Web Search Button (shown in web mode) -->
-        <div id="webSearchBtn" style="display:none;margin-top:12px">
+        <div id="webSearchBtn" style="margin-top:12px">
           <button class="btn btn-primary" onclick="Search.webSearch()" style="width:100%;padding:14px;font-size:14px;font-weight:700;border-radius:12px;background:linear-gradient(135deg,var(--primary),#3b82f6);border:none;color:white;cursor:pointer">
             🌐 Search Web
           </button>

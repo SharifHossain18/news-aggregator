@@ -1,7 +1,7 @@
 /* ===== Search & Filter Engine ===== */
 const Search = (() => {
   let debounceTimer = null;
-  let searchMode = 'local'; // 'local' or 'web'
+  let searchMode = 'web'; // 'local' or 'web' — default to web
   const MAX_HISTORY = 8;
 
   // BD newspaper domains for Google News search
@@ -35,6 +35,7 @@ const Search = (() => {
     if (searchMode === 'local') {
       debounceTimer = setTimeout(() => performSearch(query), 250);
     }
+    // In web mode, just wait for Enter or button tap
   }
 
   function performSearch(query) {
