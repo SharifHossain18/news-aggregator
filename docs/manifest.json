@@ -2,13 +2,20 @@
   "name": "PetroBangla News Hub",
   "short_name": "PB News",
   "description": "Bangladesh Energy Sector Intelligence — Search 40+ newspapers for gas, LNG, coal & Petrobangla news",
-  "start_url": "./index.html",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#030b0f",
   "theme_color": "#0d9488",
   "categories": ["news", "business"],
   "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
