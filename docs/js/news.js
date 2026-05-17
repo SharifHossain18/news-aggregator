@@ -5,6 +5,7 @@ const News = (() => {
   let currentFilter = 'all';
   let showAISummaries = true;
   let editMode = false;
+  let deletedLinks = new Set(JSON.parse(localStorage.getItem('pb_deleted') || '[]'));
 
   // Topic keywords for filtering
   const TOPICS = {
@@ -42,10 +43,23 @@ const News = (() => {
       const res = await fetch(url + '?t=' + Date.now());
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      allArticles = data || [];
+      const freshArticles = data || [];
+      
+      // Check if scan brought NEW articles (new URLs we haven't seen)
+      const oldLinks = new Set(allArticles.map(a => a.link));
+      const hasNewFromScan = freshArticles.some(a => !oldLinks.has(a.link) && !deletedLinks.has(a.link));
+      
+      // If new articles arrived from a scan, clear deleted list
+      if (hasNewFromScan && oldLinks.size > 0) {
+        deletedLinks.clear();
+        localStorage.removeItem('pb_deleted');
+      }
+      
+      // Filter out deleted articles
+      allArticles = freshArticles.filter(a => !deletedLinks.has(a.link));
       editMode = false;
       // Cache for offline
-      localStorage.setItem('pb_news_cache', JSON.stringify(allArticles));
+      localStorage.setItem('pb_news_cache', JSON.stringify(freshArticles));
       localStorage.setItem('pb_news_cache_time', Date.now().toString());
       return allArticles;
     } catch (e) {
@@ -153,10 +167,11 @@ const News = (() => {
     if (el) el.classList.add('deleting');
 
     setTimeout(() => {
-      // Permanently remove from array
+      // Track as deleted
+      deletedLinks.add(article.link);
+      localStorage.setItem('pb_deleted', JSON.stringify([...deletedLinks]));
+      // Remove from array
       allArticles = allArticles.filter(a => a.link !== article.link);
-      // Update cache
-      localStorage.setItem('pb_news_cache', JSON.stringify(allArticles));
       filter(currentFilter);
       if (typeof App !== 'undefined') App.showToast('Article deleted');
     }, 300);
@@ -164,12 +179,10 @@ const News = (() => {
 
   function clearAll() {
     if (!confirm('Permanently delete all visible articles?')) return;
-    if (currentFilter === 'all') {
-      allArticles = [];
-    } else {
-      allArticles = allArticles.filter(a => !matchesTopic(a, currentFilter));
-    }
-    localStorage.setItem('pb_news_cache', JSON.stringify(allArticles));
+    const visible = currentFilter === 'all' ? [...allArticles] : allArticles.filter(a => matchesTopic(a, currentFilter));
+    visible.forEach(a => deletedLinks.add(a.link));
+    localStorage.setItem('pb_deleted', JSON.stringify([...deletedLinks]));
+    allArticles = allArticles.filter(a => !deletedLinks.has(a.link));
     editMode = false;
     filter(currentFilter);
     if (typeof App !== 'undefined') App.showToast('All articles deleted');
