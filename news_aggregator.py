@@ -1491,13 +1491,24 @@ def scrape_all(ignore_sent_history=False):
     log(f"Health: {successful_sources} sources succeeded, {failed_sources} sources failed this run")
 
     if search_query:
-        if all_new:
-            msg = f"🔍 <b>Search Results: '{search_query}'</b>\n" + "-"*30 + "\n\n"
-            for i, art in enumerate(all_new[:15], 1):
-                msg += f"{i}. <a href='{html.escape(art['link'])}'>{html.escape(art['title'])}</a>\n\n"
-            send_telegram_chunked(msg)
-        else:
-            send_telegram_retry(f"🔍 Search for '{search_query}' yielded no new results.")
+        # Save search results to a separate file for the app
+        search_results = []
+        for art in all_new[:50]:
+            search_results.append({
+                "title": art.get("title", ""),
+                "link": art.get("link", ""),
+                "source": art.get("source", ""),
+                "time": art.get("time", ""),
+                "summary": art.get("summary", "")
+            })
+        search_file = os.path.join("docs", "search_results.json")
+        os.makedirs("docs", exist_ok=True)
+        try:
+            with open(search_file, "w", encoding="utf-8") as f:
+                json.dump({"query": search_query, "count": len(search_results), "results": search_results}, f, ensure_ascii=False, indent=2)
+            log(f"Search results saved: {len(search_results)} articles for '{search_query}'")
+        except Exception as e:
+            log(f"Error saving search results: {e}")
         return
 
     # 1. Handle Breaking News Alerts (Instant)

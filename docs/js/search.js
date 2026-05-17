@@ -1,7 +1,8 @@
 /* ===== Search & Filter Engine ===== */
 const Search = (() => {
   let debounceTimer = null;
-  let searchMode = 'web'; // 'local' or 'web' — default to web
+  let searchMode = 'web'; // 'local', 'web', or 'deep'
+  let deepPollTimer = null;
   const MAX_HISTORY = 8;
 
   // BD newspaper domains for Google News search
@@ -17,17 +18,25 @@ const Search = (() => {
     searchMode = mode;
     document.getElementById('modeLocal').classList.toggle('active', mode === 'local');
     document.getElementById('modeWeb').classList.toggle('active', mode === 'web');
-    document.getElementById('webSearchHint').style.display = mode === 'web' ? 'block' : 'none';
-    document.getElementById('webSearchBtn').style.display = mode === 'web' ? 'block' : 'none';
-    document.getElementById('searchInput').placeholder = mode === 'web'
-      ? 'Search any topic — sports, politics, culture...'
-      : 'Search in saved news...';
+    const deepBtn = document.getElementById('modeDeep');
+    if (deepBtn) deepBtn.classList.toggle('active', mode === 'deep');
+    document.getElementById('webSearchHint').style.display = (mode === 'web' || mode === 'deep') ? 'block' : 'none';
+    document.getElementById('webSearchBtn').style.display = mode !== 'local' ? 'block' : 'none';
+    
+    // Update button text
+    const btn = document.querySelector('#webSearchBtn button');
+    if (btn) {
+      btn.textContent = mode === 'deep' ? '🔍 Deep Search (5-7 min)' : '🌐 Search Web';
+    }
+    
+    document.getElementById('searchInput').placeholder = mode === 'local'
+      ? 'Search in saved news...'
+      : mode === 'deep' ? 'Search any topic across 44 newspapers...'
+      : 'Search any topic...';
     // Re-run search
     const q = document.getElementById('searchInput').value.trim();
-    if (q) {
-      if (mode === 'local') performSearch(q);
-      else document.getElementById('searchResults').innerHTML = '';
-    }
+    if (q && mode === 'local') performSearch(q);
+    else if (!q) document.getElementById('searchResults').innerHTML = '';
   }
 
   function onInput(query) {
@@ -101,8 +110,13 @@ const Search = (() => {
       return;
     }
 
+    // If deep mode, use local server
+    if (searchMode === 'deep') {
+      return deepSearch(query);
+    }
+
     // Switch to web mode if not already
-    if (searchMode !== 'web') setMode('web');
+    if (searchMode === 'local') setMode('web');
 
     saveToHistory(query);
     const container = document.getElementById('searchResults');
@@ -320,5 +334,126 @@ const Search = (() => {
     App.showToast('Search history cleared');
   }
 
-  return { onInput, performSearch, webSearch, setMode, showRecent, clearHistory };
+  async function deepSearch(query) {
+    if (!query) query = document.getElementById('searchInput').value.trim();
+    if (!query) { App.showToast('Type something to search'); return; }
+
+    saveToHistory(query);
+    const container = document.getElementById('searchResults');
+    const localUrl = localStorage.getItem('pb_local_url') || 'http://192.168.11.25:5055';
+    const localToken = localStorage.getItem('pb_local_token') || '';
+
+    // Show progress
+    container.innerHTML = `
+      <div class="card">
+        <div style="text-align:center;padding:30px">
+          <div style="font-size:32px;animation:pulse 1.5s infinite">\ud83d\udd0d</div>
+          <div style="margin-top:12px;font-size:14px;font-weight:600">Deep Searching: "${News.escapeHtml(query)}"</div>
+          <div style="margin-top:4px;font-size:11px;color:var(--ink-muted)">Scraping 44 newspaper websites... (5-7 minutes)</div>
+          <div style="margin-top:16px;height:4px;background:var(--bg-glass);border-radius:4px;overflow:hidden">
+            <div id="deepProgress" style="height:100%;width:0%;background:linear-gradient(90deg,var(--primary),#3b82f6);border-radius:4px;transition:width 1s ease"></div>
+          </div>
+          <div id="deepStatus" style="margin-top:8px;font-size:11px;color:var(--ink-muted)">Starting scan...</div>
+        </div>
+      </div>`;
+
+    // Trigger search via local server
+    try {
+      const headers = {'Content-Type': 'application/json'};
+      if (localToken) headers['X-App-Token'] = localToken;
+
+      const res = await fetch(localUrl + '/api/search', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({query})
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Server error');
+      }
+
+      // Start polling for results
+      let elapsed = 0;
+      const maxWait = 600; // 10 minutes max
+      clearInterval(deepPollTimer);
+
+      deepPollTimer = setInterval(async () => {
+        elapsed += 5;
+        const pct = Math.min(95, (elapsed / 420) * 100); // ~7 min estimate
+        const bar = document.getElementById('deepProgress');
+        const status = document.getElementById('deepStatus');
+        if (bar) bar.style.width = pct + '%';
+        if (status) status.textContent = `Scanning... ${Math.floor(elapsed/60)}m ${elapsed%60}s elapsed`;
+
+        // Check if scan is done
+        try {
+          const statusRes = await fetch(localUrl + '/api/status', {headers: localToken ? {'X-App-Token': localToken} : {}});
+          const statusData = await statusRes.json();
+
+          if (!statusData.running) {
+            clearInterval(deepPollTimer);
+            // Fetch results
+            const resRes = await fetch(localUrl + '/api/search/results', {headers: localToken ? {'X-App-Token': localToken} : {}});
+            const data = await resRes.json();
+
+            if (data.results && data.results.length > 0) {
+              container.innerHTML = `
+                <div class="card">
+                  <div class="section-title">
+                    <span>\ud83d\udd0d Deep Search: "${News.escapeHtml(query)}"</span>
+                    <span style="font-size:11px;color:var(--primary-light)">${data.results.length} found</span>
+                  </div>
+                  ${data.results.map((n, i) => `
+                    <div class="news-item">
+                      <div class="news-index">${i + 1}</div>
+                      <div class="news-body">
+                        <a href="${News.escapeHtml(n.link)}" class="news-title" target="_blank" rel="noopener">${highlightMatch(n.title, query)}</a>
+                        <div class="news-meta">
+                          <span class="source-badge">${News.escapeHtml(n.source)}</span>
+                          <span class="time-badge">\ud83d\udd52 ${News.escapeHtml(n.time || 'Today')}</span>
+                        </div>
+                        ${n.summary ? `<div class="news-summary">\ud83d\udcdd ${News.escapeHtml(n.summary)}</div>` : ''}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>`;
+              App.showToast(`Found ${data.results.length} articles!`);
+            } else {
+              container.innerHTML = `
+                <div class="card">
+                  <div class="empty-state">
+                    <div class="icon">\ud83d\udd0d</div>
+                    <div class="title">No results for "${News.escapeHtml(query)}"</div>
+                    <div class="desc">No matching articles found across 44 newspapers. Try different keywords.</div>
+                  </div>
+                </div>`;
+            }
+          }
+        } catch (pollErr) {
+          console.warn('Poll error:', pollErr);
+        }
+
+        if (elapsed >= maxWait) {
+          clearInterval(deepPollTimer);
+          container.innerHTML = `
+            <div class="card"><div class="empty-state">
+              <div class="icon">\u23f0</div>
+              <div class="title">Search timed out</div>
+              <div class="desc">The scan took too long. Try again.</div>
+            </div></div>`;
+        }
+      }, 5000);
+
+    } catch (err) {
+      container.innerHTML = `
+        <div class="card"><div class="empty-state">
+          <div class="icon">\u26a0\ufe0f</div>
+          <div class="title">Could not start deep search</div>
+          <div class="desc">${News.escapeHtml(err.message)}. Make sure the local server is running.</div>
+        </div></div>`;
+    }
+  }
+
+  return { onInput, performSearch, webSearch, deepSearch, setMode, showRecent, clearHistory };
 })();

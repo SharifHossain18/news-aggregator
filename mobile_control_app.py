@@ -129,6 +129,32 @@ def run_now():
     code = 200 if ok else 409
     return jsonify({"ok": ok, "message": msg}), code
 
+@app.route("/api/search", methods=["POST"])
+def search_news():
+    if not is_authorized(request):
+        return jsonify({"ok": False, "error": "Unauthorized"}), 401
+    payload = request.get_json(silent=True) or {}
+    query = (payload.get("query") or "").strip()
+    if not query:
+        return jsonify({"ok": False, "error": "No search query provided"}), 400
+    
+    append_log(f"Starting deep search for: {query}")
+    ok, msg = run_command(["trigger"], extra_env={"SEARCH_QUERY": query})
+    code = 200 if ok else 409
+    return jsonify({"ok": ok, "message": msg, "query": query}), code
+
+@app.route("/api/search/results")
+def search_results():
+    search_file = os.path.join(BASE_DIR, "docs", "search_results.json")
+    if not os.path.exists(search_file):
+        return jsonify({"query": "", "count": 0, "results": []})
+    try:
+        with open(search_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"query": "", "count": 0, "results": [], "error": str(e)})
+
 def trigger_github_action(mode):
     if not GITHUB_TOKEN or not GITHUB_REPO:
         return jsonify({"ok": False, "error": "GitHub Token or Repo not configured in .env"}), 400
