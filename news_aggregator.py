@@ -33,7 +33,7 @@ EXTRA_ARTICLE_URLS = [u.strip() for u in os.environ.get("EXTRA_ARTICLE_URLS", ""
 STRICT_CORE_ONLY = os.environ.get("STRICT_CORE_ONLY", "false").strip().lower() in ("1", "true", "yes", "on")
 DIGEST_HOUR_BD = int(os.environ.get("DIGEST_HOUR_BD", "7"))
 DIGEST_CATCHUP_HOURS = int(os.environ.get("DIGEST_CATCHUP_HOURS", "5"))
-SCAN_DAYS = int(os.environ.get("SCAN_DAYS", "0"))
+SCAN_DAYS = int(os.environ.get("SCAN_DAYS") or "0")
 SCAN_SOURCES = [s.strip().lower() for s in os.environ.get("SCAN_SOURCES", "").split(",") if s.strip()]
 
 # --- GEMINI AI SETUP ---

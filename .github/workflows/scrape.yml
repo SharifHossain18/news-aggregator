@@ -1,8 +1,6 @@
 name: News Aggregator Cloud Run
 
 on:
-  schedule:
-    - cron: '5 1 * * *'  # 7:05 AM Bangladesh time (GMT+6)
   workflow_dispatch:
     inputs:
       mode:
