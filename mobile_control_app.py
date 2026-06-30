@@ -96,7 +96,7 @@ def index():
 
 @app.route("/manifest.json")
 def manifest():
-    with open(os.path.join(BASE_DIR, "manifest.json"), "r") as f:
+    with open(os.path.join(BASE_DIR, "docs", "manifest.json"), "r") as f:
         return Response(f.read(), mimetype="application/json")
 
 @app.route("/sw.js")
@@ -473,8 +473,9 @@ MOBILE_HTML = """<!doctype html>
       </div>
       
       <div class="input-group">
-        <input id="token" type="password" placeholder="App Token (X-App-Token)"/>
+        <input id="token" type="password" placeholder="App Token (X-App-Token)" oninput="saveToken()"/>
       </div>
+      <div id="serverInfo" style="font-size:11px;color:var(--muted);margin-top:-12px;margin-bottom:16px;text-align:center"></div>
 
       <div class="btn-group">
         <button id="mainBtn" class="btn-primary" onclick="runMode('trigger')">
@@ -562,9 +563,13 @@ MOBILE_HTML = """<!doctype html>
         const scrollAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 50;
         
         box.innerHTML = data.lines.map(line => {
-          const match = line.match(/^\[(.*?)\] (.*)$/);
-          if (match) {
-            return `<div class="log-line"><span class="log-ts">${match[1]}</span>${match[2]}</div>`;
+          if (line.startsWith('[')) {
+            const idx = line.indexOf(']');
+            if (idx > 0) {
+              const ts = line.substring(1, idx);
+              const msg = line.substring(idx + 1).trim();
+              return `<div class="log-line"><span class="log-ts">${ts}</span>${msg}</div>`;
+            }
           }
           return `<div class="log-line">${line}</div>`;
         }).join('');
@@ -609,11 +614,33 @@ MOBILE_HTML = """<!doctype html>
       document.getElementById('logs').innerHTML = '';
     }
 
+    function saveToken() {
+      const token = document.getElementById('token').value;
+      if (token) localStorage.setItem('app_token', token);
+      else localStorage.removeItem('app_token');
+    }
+
+    function loadToken() {
+      const saved = localStorage.getItem('app_token');
+      if (saved) document.getElementById('token').value = saved;
+    }
+
+    function showServerInfo() {
+      const el = document.getElementById('serverInfo');
+      const host = location.hostname;
+      const port = location.port;
+      el.textContent = host !== 'localhost' && host !== '127.0.0.1'
+        ? 'Connected to ' + host + (port ? ':' + port : '')
+        : 'Open your mobile browser to http://YOUR_PC_IP:' + port + ' from your phone';
+    }
+
     // Register Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js');
     }
 
+    loadToken();
+    showServerInfo();
     setInterval(refreshStatus, 3000);
     setInterval(refreshLogs, 2000);
     refreshStatus();
